@@ -1,7 +1,7 @@
-package com.theStuffGatherer.DAOs
+package com.theStuffGatherer.databass.DAOs
 
 import com.theStuffGatherer.DTOs.SkillDTO
-import com.theStuffGatherer.tables.SkillsTable
+import com.theStuffGatherer.databass.tables.SkillsTable
 import org.jetbrains.exposed.dao.ColumnWithTransform
 import org.jetbrains.exposed.dao.LongEntity
 import org.jetbrains.exposed.dao.LongEntityClass

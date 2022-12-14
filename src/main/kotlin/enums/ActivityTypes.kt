@@ -1,5 +1,5 @@
 package com.theStuffGatherer.enums
 
-enum class Activities {
+enum class ActivityTypes {
   EXPLORING, NOTHING
 }

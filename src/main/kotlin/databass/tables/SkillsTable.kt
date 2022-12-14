@@ -1,4 +1,4 @@
-package com.theStuffGatherer.tables
+package com.theStuffGatherer.databass.tables
 
 import org.jetbrains.exposed.dao.id.LongIdTable
 

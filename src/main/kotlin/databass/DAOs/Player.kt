@@ -1,6 +1,6 @@
-package com.theStuffGatherer.DAOs
+package com.theStuffGatherer.databass.DAOs
 
-import com.theStuffGatherer.tables.PlayersTable
+import com.theStuffGatherer.databass.tables.PlayersTable
 import org.jetbrains.exposed.dao.LongEntity
 import org.jetbrains.exposed.dao.LongEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
