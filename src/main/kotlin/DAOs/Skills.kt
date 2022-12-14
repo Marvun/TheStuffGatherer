@@ -15,9 +15,10 @@ class Skills(id: EntityID<Long>): LongEntity(id) {
   var fishingSkill by SkillsTable.fishingSkill.transformSkill()
   var choppingSkill by SkillsTable.choppingSkill.transformSkill()
   var miningSkill by SkillsTable.miningSkill.transformSkill()
+  var exploringSkill by SkillsTable.exploringSkill.transformSkill()
 
   val skills : MutableList<SkillDTO>
-    get() =  mutableListOf(fishingSkill, choppingSkill,miningSkill)
+    get() =  mutableListOf(fishingSkill, choppingSkill, miningSkill, exploringSkill)
 
   fun addSkillExp(skillName: String, expAmount: Int): SkillDTO {
     val skill = skills.find { it.name == skillName }!!

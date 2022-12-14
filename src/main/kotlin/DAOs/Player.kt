@@ -11,10 +11,8 @@ class Player(id: EntityID<Long>) : LongEntity(id) {
   companion object : LongEntityClass<Player>(PlayersTable)
 
   var userId by PlayersTable.userId
-  var exploreStartTime by PlayersTable.exploreStartTime
-  var exploreDuration by PlayersTable.exploreDuration
+  var activityStartTime by PlayersTable.activityStartTime
+  var activityDuration by PlayersTable.activityDuration
+  var currentActivity by PlayersTable.currentActivity
 
-  fun checkIfExploring(): Boolean {
-    return System.currentTimeMillis() - exploreStartTime < exploreDuration
-  }
 }
