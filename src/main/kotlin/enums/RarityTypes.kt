@@ -5,5 +5,13 @@ enum class RarityTypes(val range: IntRange) {
   A(86..95),
   B(61..85),
   C(26..60),
-  D(0..25)
+  D(1..25),
+  NONE(0..0);
+
+
+
+  companion object {
+    fun getFromString(s: String): RarityTypes = values().find { it.name == s || it.name.lowercase() == s }!!
+
+  }
 }

@@ -2,42 +2,69 @@ package com.theStuffGatherer
 
 
 import com.theStuffGatherer.databass.Database
-import com.theStuffGatherer.logic.getRewards
-import dev.kord.common.annotation.KordPreview
+import dev.kord.common.Color
+import dev.kord.x.emoji.Emojis
+import me.jakejmattson.discordkt.arguments.AnyArg
+import me.jakejmattson.discordkt.arguments.Argument
+import me.jakejmattson.discordkt.arguments.IntegerArg
 import me.jakejmattson.discordkt.commands.commands
+import me.jakejmattson.discordkt.conversations.ConversationBuilder
+import me.jakejmattson.discordkt.conversations.conversation
 import me.jakejmattson.discordkt.dsl.bot
+import me.jakejmattson.discordkt.extensions.toPartialEmoji
 
-@OptIn(KordPreview::class)
+
 fun main(args: Array<String>) {
   Database.init()
 
   val token = args[0]
 
-  bot(token) {}
+  bot(token) {
+    prefix { "%" }
+  }
 }
 
 fun demo() = commands("Demo") {
   slash("testme", "A 'Hello World' command.") {
     execute {
-      val rewards = getRewards(600L)
-
-      respond{
-        for (entry in rewards) {
-          val rarities = entry.value.groupingBy { it }.eachCount()
-          val formattedRarities = mutableListOf<String>()
-          rarities.forEach {
-            formattedRarities.add("${it.value}x ${it.key.name}")
-          }
-
-          field {
-            name = "__${entry.key.name}__"
-            value = formattedRarities.joinToString("\n")
-          }
-        }
-      }
+      val result = testconvo().startSlashResponse(discord, author, this)
+      println(result)
     }
   }
 }
 
+fun testconvo() = conversation("exit", 30) {
+  val name = prompt(AnyArg, "What is your name?")
 
+  val age = prompt(IntegerArg) {
+    title = "How old are you?"
+  }
+
+  val response = promptButton {
+    embed {
+      title = "Do you like DiscordKt?"
+      color = Color(0x00bfff)
+    }
+
+    buttons {
+      button("Yes", Emojis.whiteCheckMark, "Glad you like it.")
+      button("No", Emojis.x, "You should let me know how to fix the lib.")
+    }
+  }
+
+  val selection = promptSelect {
+    this.selectionCount = 1..1
+
+    content {
+      title = "Selection"
+      description = "What's your favorite letter?"
+    }
+
+    option("A", description = "The first letter", emoji = Emojis.regionalIndicatorA.toPartialEmoji())
+    option("B", description = "The second letter", emoji = Emojis.regionalIndicatorB.toPartialEmoji())
+    option("C", description = "The third letter", emoji = Emojis.regionalIndicatorC.toPartialEmoji())
+  }
+
+  respond("Nice to meet you $name ($age)! $response ${selection.first()} is my favorite letter too.")
+}
 

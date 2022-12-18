@@ -13,6 +13,9 @@ class Player(id: EntityID<Long>) : LongEntity(id) {
   var userId by PlayersTable.userId
   var activityStartTime by PlayersTable.activityStartTime
   var activityDuration by PlayersTable.activityDuration
+  var currentActivityType by PlayersTable.currentActivityType
   var currentActivity by PlayersTable.currentActivity
-
+  var currentLocation by PlayersTable.currentLocation
+  var currentlyGathering by PlayersTable.currentlyGathering
+  var destination by PlayersTable.destination
 }
