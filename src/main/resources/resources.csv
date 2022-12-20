@@ -1,0 +1,32 @@
+name,short,gatherduration,type,siteTypes
+Onsoy Ore,on,180000,ORE,MINE
+Sufara Ore,suf,240000,ORE,MINE
+Velia Ore,vel,330000,ORE,MINE
+Enard Ore,en,420000,ORE,MINE
+Brunexa Ore,bru,540000,ORE,MINE
+Frae Gem,fra,600000,GEM,MINE
+Weioi Gem,wei,720000,GEM,MINE
+Gilna Coal,gil,300000,FUEL,MINE
+Barivor Coal, bar,500000,FUEL,MINE
+Redar Log,red,180000,LOG,FOREST
+Suchia Log,suc,240000,LOG,FOREST
+Delrus Log,del,330000,LOG,FOREST
+Peldona Log,pel,420000,LOG,FOREST
+Covento Berry,cov,120000,BERRY,"FOREST,MEADOW"
+Toi Berry,toi,240000,BERRY,MEADOW
+Baloe Fruit,bal,210000,FRUIT,FOREST
+Girini Fruit,gir,270000,FRUIT,MEADOW
+Hakple,hak,210000,PLANT,MEADOW
+Tauva,tau,270000,PLANT,FOREST
+Enuy,enu,360000,PLANT,"FOREST,MEADOW"
+Mycia,myc,360000,PLANT,"MEADOW,RIVER"
+Sevo Stone,sev,180000,STONE,MINE
+Sevo Sand,sevs,150000,SAND,RIVER
+Grunua Stone,gru,240000,STONE,MINE
+Grunua Sand,grus,210000,SAND,RIVER
+Chudea Stone,chu,330000,STONE,MINE
+Chudea Sand,chus,270000,SAND,RIVER
+Herduna Fish,her,480000,FISH,LAKE
+Varoavora Fish,var,600000,FISH,LAKE
+Goldedea Fish,gol,780000,FISH,"LAKE,RIVER"
+FIREWOOD,fw,120000,FUEL,FOREST

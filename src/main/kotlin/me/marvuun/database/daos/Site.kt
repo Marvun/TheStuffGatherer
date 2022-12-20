@@ -1,0 +1,32 @@
+package me.marvuun.database.daos
+
+import me.marvuun.database.daos.PlayerSite.Companion.transform
+import me.marvuun.database.tables.Resources
+import me.marvuun.database.tables.Sites
+import me.marvuun.util.stringToMap
+import org.jetbrains.exposed.dao.Entity
+import org.jetbrains.exposed.dao.EntityClass
+import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.Column
+import java.util.*
+
+class Site(id: EntityID<UUID>): Entity<UUID>(id) {
+  companion object: EntityClass<UUID, Site>(Sites)
+
+  var siteId by Sites.id
+  var userId by Sites.userId
+  var type by Sites.type
+  var rarity by Sites.rarity
+  var totalResources by Sites.totalResources.transformResources()
+  var currentResources by Sites.currentResources.transformResources()
+  var travelTime by Sites.travelTime
+}
+
+private fun Column<String>.transformResources() =
+  transform({
+    it.toString()
+  }, {
+    stringToMap(it)
+      .mapKeys { entry -> Resource.find { Resources.id eq entry.key }.first().short }
+      .mapValues { entry -> entry.value.toInt() }
+  })
