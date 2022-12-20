@@ -27,6 +27,5 @@ private fun Column<String>.transformResources() =
     it.toString()
   }, {
     stringToMap(it)
-      .mapKeys { entry -> Resource.find { Resources.id eq entry.key }.first().short }
       .mapValues { entry -> entry.value.toInt() }
   })

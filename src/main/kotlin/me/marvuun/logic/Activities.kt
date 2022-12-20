@@ -176,3 +176,36 @@ fun GuildSlashCommandEvent<NoArgs>.generateSites(): Int {
   return count
 }
 
+fun GuildSlashCommandEvent<NoArgs>.getSiteUUIDFromSelection(selection: String, sites: Map<SiteTypes, List<Site>>): UUID {
+
+  val playerSites = getPlayerSites()
+
+  return when (selection) {
+    "FOREST" -> if (playerSites.forestId == null) {
+      playerSites.forestId = sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
+      playerSites.forestId!!
+    } else playerSites.forestId!!
+
+    "MINE" -> if (playerSites.mineId == null) {
+      playerSites.mineId = sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
+      playerSites.mineId!!
+    } else playerSites.mineId!!
+
+    "LAKE" -> if (playerSites.lakeId == null) {
+      playerSites.lakeId = sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
+      playerSites.lakeId!!
+    } else playerSites.lakeId!!
+
+    "RIVER" -> if (playerSites.riverId == null) {
+      playerSites.riverId = sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
+      playerSites.riverId!!
+    } else playerSites.riverId!!
+
+    "MEADOW" -> if (playerSites.meadowId == null) {
+      playerSites.meadowId = sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
+      playerSites.meadowId!!
+    } else playerSites.meadowId!!
+
+    else -> sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
+  }
+}
