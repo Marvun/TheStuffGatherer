@@ -1,7 +1,6 @@
 package me.marvuun.database.daos
 
 import me.marvuun.database.daos.PlayerSite.Companion.transform
-import me.marvuun.database.tables.Resources
 import me.marvuun.database.tables.Sites
 import me.marvuun.util.stringToMap
 import org.jetbrains.exposed.dao.Entity
@@ -22,7 +21,7 @@ class Site(id: EntityID<UUID>): Entity<UUID>(id) {
   var travelTime by Sites.travelTime
 }
 
-private fun Column<String>.transformResources() =
+fun Column<String>.transformResources() =
   transform({
     it.toString()
   }, {

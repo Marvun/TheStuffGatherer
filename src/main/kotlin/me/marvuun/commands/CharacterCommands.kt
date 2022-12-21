@@ -1,9 +1,7 @@
 package me.marvuun.commands
 
 import me.jakejmattson.discordkt.commands.commands
-import me.marvuun.logic.getLocation
-import me.marvuun.logic.printSites
-import me.marvuun.logic.startJourney
+import me.marvuun.logic.*
 
 fun characterCommands() = commands("Character") {
   slash("start","Start the journey!") {
@@ -19,6 +17,11 @@ fun characterCommands() = commands("Character") {
   slash("location") {
     execute {
       getLocation()
+    }
+  }
+  slash("levels") {
+    execute {
+      printLevels()
     }
   }
 }

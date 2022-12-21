@@ -1,12 +1,14 @@
 package me.marvuun.logic
 
+import me.jakejmattson.discordkt.NoArgs
+import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.marvuun.database.daos.Resource
 import me.marvuun.database.tables.Resources
 import me.marvuun.enums.RarityTypes
 import me.marvuun.enums.ResourceCategories
 import me.marvuun.enums.SiteTypes
 
-fun generateResources(rarityType: RarityTypes, siteType: SiteTypes): Map<String, Int> {
+fun GuildSlashCommandEvent<NoArgs>.generateResources(rarityType: RarityTypes, siteType: SiteTypes): Map<String, Int> {
 
   val map = mutableMapOf<String, Int>()
   val resourceCategories = siteTypeToResourceCategories(siteType)
@@ -23,7 +25,7 @@ fun generateResources(rarityType: RarityTypes, siteType: SiteTypes): Map<String,
   if (typeCount is Int && amount is IntRange) {
 
     repeat(typeCount) {
-      val type = Resource.find { Resources.type inList resourceCategories }.toList().random().short
+      val type = Resource.find { Resources.type inList resourceCategories }.toList().filter { it.maxAtLevel - getLevelForResourceCategory(it) <= 10 }.random().short
       if (map[type] == null) map[type] = amount.random()
       else map[type] = map[type]!! + amount.random()
     }
@@ -34,10 +36,10 @@ fun generateResources(rarityType: RarityTypes, siteType: SiteTypes): Map<String,
 
 fun generateTravelTime(rarity: RarityTypes) =
   when (rarity) {
-    RarityTypes.S -> (10800000..21600000).random()
-    RarityTypes.A -> (7200000..14400000).random()
-    RarityTypes.B -> (3600000..5400000).random()
-    RarityTypes.C -> (1800000..3600000).random()
+    RarityTypes.S -> (10800000..14400000).random()
+    RarityTypes.A -> (5400000..7200000).random()
+    RarityTypes.B -> (2700000..3600000).random()
+    RarityTypes.C -> (1800000..2700000).random()
     RarityTypes.D -> (900000..1800000).random()
   }
 

@@ -14,7 +14,7 @@ class Player(id: EntityID<ULong>): Entity<ULong>(id) {
   var currentActivityType by Players.currentActivityType
   var currentActivity by Players.currentActivity
   var currentLocation by Players.currentLocation
-  val currentlyGathering by Players.currentlyGathering
+  var currentlyGathering by Players.currentlyGathering.transformResources()
   var destination by Players.destination
 
 

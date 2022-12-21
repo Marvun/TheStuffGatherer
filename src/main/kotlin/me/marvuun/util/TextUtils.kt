@@ -9,7 +9,11 @@ fun getLocationRarity(location: String): RarityTypes {
   return RarityTypes.getFromString(rarityString)
 }
 
-fun stringToMap(s: String): MutableMap<String, String> = s.removeSurrounding("{", "}").split(",").associate {
+fun stringToMap(s: String): MutableMap<String, String> =
+  if (s == "{}")
+    mutableMapOf()
+  else
+  s.removeSurrounding("{", "}").split(", ").associate {
   val (left, right) = it.split("=")
   left to right
 }.toMutableMap()
