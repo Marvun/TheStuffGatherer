@@ -4,7 +4,7 @@ plugins {
     kotlin("jvm") version "1.7.20"
 }
 
-group = "com.thestuffgatherer"
+group = "me.marvuun"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -14,12 +14,17 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
+
     implementation("me.jakejmattson:DiscordKt:0.23.4")
     implementation("dev.kord:kord-core:0.8.0-M17")
+
     implementation("org.jetbrains.exposed:exposed-core:0.40.1")
     implementation("org.jetbrains.exposed:exposed-dao:0.40.1")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.40.1")
+
     implementation("org.mariadb.jdbc:mariadb-java-client:3.0.7")
+
+    implementation("com.github.doyaaaaaken:kotlin-csv-jvm:1.7.0")
 
 }
 
