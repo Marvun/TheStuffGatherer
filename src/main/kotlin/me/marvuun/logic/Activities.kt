@@ -202,7 +202,18 @@ suspend fun GuildSlashCommandEvent<*>.checkIfBusy(): Unit? {
   } else Unit
 }
 
-fun GuildSlashCommandEvent<*>.getPlayer() = transaction { Player.findById(this@getPlayer.author.id.value)!! }
+fun GuildSlashCommandEvent<*>.getPlayer() = transaction { Player.findById(this@getPlayer.author.id.value) }!!
+
+suspend fun GuildSlashCommandEvent<*>.isRegisteredPlayer(): Unit? {
+  val player = transaction { Player.findById(this@isRegisteredPlayer.author.id.value) }
+  return if (player == null) {
+    respond {
+      title = "Please start your journey with `/start` first."
+    }
+    null
+  }
+  else Unit
+}
 
 fun GuildSlashCommandEvent<*>.getSites() =
   transaction { Site.find(Sites.userId eq getPlayer().userId.value).groupBy { it.type } }
