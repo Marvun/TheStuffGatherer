@@ -23,12 +23,7 @@ suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
 
   val player = getPlayer()
 
-  if (checkIfBusy(player)) {
-    respond {
-      title = "You are currently busy. You are ${player.currentActivityType!!.name.lowercase()}."
-    }
-    return
-  }
+  checkIfBusy() ?: return
 
   respond {
 
@@ -52,9 +47,10 @@ suspend fun GuildSlashCommandEvent<NoArgs>.startTravel() =
   travelConversation().startSlashResponse(discord, author, this)
 
 suspend fun GuildSlashCommandEvent<NoArgs>.finishActivity() {
+
   val player = getPlayer()
 
-  if (!checkIfBusy(player)) {
+  if (checkIfBusy() != null) {
     respond {
       title = "You aren't doing anything right now."
     }
@@ -62,9 +58,10 @@ suspend fun GuildSlashCommandEvent<NoArgs>.finishActivity() {
   }
 
   val currentActivityType = player.currentActivityType!!
+  val expectedFinish = player.activityStartTime + player.activityDuration
 
-  if (player.activityStartTime + player.activityDuration > System.currentTimeMillis()) {
-    val timeLeft = player.activityStartTime + player.activityDuration - System.currentTimeMillis()
+  if (expectedFinish > System.currentTimeMillis()) {
+    val timeLeft = expectedFinish - System.currentTimeMillis()
     respond {
       title = "You can't finish your activity yet."
       description = "You are still ${currentActivityType.name.lowercase()} for ${millisecondsToDuration(timeLeft)}."
@@ -73,73 +70,17 @@ suspend fun GuildSlashCommandEvent<NoArgs>.finishActivity() {
   }
 
   when (currentActivityType) {
-    ActivityTypes.EXPLORING -> {
-      val amount = generateSites()
-      respond {
-        title = """
-          You finished ${currentActivityType.name.lowercase()}.
-          You found $amount sites.
-          """.trimIndent()
-      }
 
+    ActivityTypes.EXPLORING -> {
+      finishExploring()
     }
 
     ActivityTypes.TRAVELING -> {
-      transaction {
-        player.currentLocation = player.destination
-        player.destination = null
-      }
-      val site = transaction { Site.findById(player.currentLocation!!) }!!
-      respond {
-        title = "You arrived at the ${site.type.getDisplayName()}."
-      }
+      finishTraveling()
     }
 
     ActivityTypes.GATHERING -> {
-
-      val resources = transaction { player.currentlyGathering }
-
-
-      val transformedResources = mutableListOf<String>()
-
-      resources.forEach { (short, count) ->
-        val resource = Resource.getResourceFromShort(short)
-        val amount = count * calculateResourceAmount(resource)
-        val levels = getLevels()
-
-        transaction {
-          val inventoryEntries =
-            Inventory.find { (Inventories.id eq author.id.value) and (Inventories.itemId eq resource.short) }
-
-          if (inventoryEntries.empty()) {
-            Inventory.new {
-              userId = EntityID(author.id.value, Inventories)
-              itemId = resource.short
-              this.amount = amount
-            }
-          } else {
-            val inventoryEntry = inventoryEntries.first()
-            inventoryEntry.amount = inventoryEntry.amount + amount
-          }
-        }
-
-
-        levels.context = this
-        levels.addExperience(resource, amount)
-
-        transformedResources.add(
-          "${amount}x ${resource.name.value}"
-        )
-      }
-      transaction { player.currentlyGathering = mutableMapOf() }
-      respond {
-        title = "You finished gathering."
-        field {
-          name = "You got the following resources:\n"
-          value = transformedResources.joinToString("\n")
-        }
-      }
-
+      finishGathering()
     }
   }
   transaction {
@@ -149,6 +90,78 @@ suspend fun GuildSlashCommandEvent<NoArgs>.finishActivity() {
   }
 
 
+}
+
+suspend fun GuildSlashCommandEvent<NoArgs>.finishGathering() {
+
+  val player = getPlayer()
+  val resources = transaction { player.currentlyGathering }
+  val transformedResources = mutableListOf<String>()
+
+  resources.forEach { (short, count) ->
+
+    val resource = Resource.getResourceFromShort(short)
+    val amount = count * calculateResourceAmount(resource)
+    val levels = getLevels()
+
+    transaction {
+
+      val inventoryEntries =
+        Inventory.find { (Inventories.id eq author.id.value) and (Inventories.itemId eq resource.short) }
+
+      if (inventoryEntries.empty()) {
+        Inventory.new {
+          userId = EntityID(author.id.value, Inventories)
+          itemId = resource.short
+          this.amount = amount
+        }
+      }
+      else {
+        val inventoryEntry = inventoryEntries.first()
+        inventoryEntry.amount = inventoryEntry.amount + amount
+      }
+    }
+
+    levels.context = this
+    levels.addExperience(resource, amount)
+
+    transformedResources.add(
+      "${amount}x ${resource.name.value}"
+    )
+  }
+
+  transaction { player.currentlyGathering = mutableMapOf() }
+
+  respond {
+    title = "You finished gathering."
+    field {
+      name = "You got the following resources:\n"
+      value = transformedResources.joinToString("\n")
+    }
+  }
+}
+
+suspend fun GuildSlashCommandEvent<NoArgs>.finishTraveling() {
+
+  val player = getPlayer()
+
+  transaction {
+    player.currentLocation = player.destination
+    player.destination = null
+  }
+
+  val site = getSite()
+
+  respond {
+    title = "You arrived at the ${site.type.getDisplayName()}."
+  }
+}
+
+suspend fun GuildSlashCommandEvent<NoArgs>.finishExploring() {
+  val amount = generateSites()
+  respond {
+    title = "You finished exploring.\nYou found $amount sites."
+  }
 }
 
 suspend fun GuildSlashCommandEvent<NoArgs>.getActivity() {
@@ -176,7 +189,18 @@ suspend fun GuildSlashCommandEvent<NoArgs>.getActivity() {
 suspend fun GuildSlashCommandEvent<NoArgs>.startGathering() =
   gatherConversation().startSlashResponse(discord, author, this)
 
-fun checkIfBusy(player: Player) = transaction { player.currentActivityType } != null
+suspend fun GuildSlashCommandEvent<*>.checkIfBusy(): Unit? {
+
+  val player = getPlayer()
+  val busy = transaction { player.currentActivityType } != null
+
+  return if (busy) {
+    respond {
+      title = "You are currently busy. You are ${player.currentActivityType!!.name.lowercase()}."
+    }
+    null
+  } else Unit
+}
 
 fun GuildSlashCommandEvent<*>.getPlayer() = transaction { Player.findById(this@getPlayer.author.id.value)!! }
 
@@ -230,32 +254,31 @@ fun GuildSlashCommandEvent<NoArgs>.getSiteUUIDFromSelection(
 
   val playerSites = getPlayerSites()
 
-  return when (selection) {
-    "FOREST" -> if (playerSites.forestId == null) {
-      playerSites.forestId = sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
+  return when (SiteTypes.getFromString(selection)) {
+
+    SiteTypes.FOREST -> {
+      playerSites.forestId = playerSites.forestId ?: sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
       playerSites.forestId!!
-    } else playerSites.forestId!!
+    }
 
-    "MINE" -> if (playerSites.mineId == null) {
-      playerSites.mineId = sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
+    SiteTypes.MINE -> {
+      playerSites.mineId = playerSites.mineId ?: sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
       playerSites.mineId!!
-    } else playerSites.mineId!!
+    }
 
-    "LAKE" -> if (playerSites.lakeId == null) {
-      playerSites.lakeId = sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
+    SiteTypes.LAKE -> {
+      playerSites.lakeId = playerSites.lakeId ?: sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
       playerSites.lakeId!!
-    } else playerSites.lakeId!!
+    }
 
-    "RIVER" -> if (playerSites.riverId == null) {
-      playerSites.riverId = sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
+    SiteTypes.RIVER -> {
+      playerSites.riverId = playerSites.riverId ?: sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
       playerSites.riverId!!
-    } else playerSites.riverId!!
+    }
 
-    "MEADOW" -> if (playerSites.meadowId == null) {
-      playerSites.meadowId = sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
+    SiteTypes.MEADOW -> {
+      playerSites.meadowId = playerSites.meadowId ?: sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
       playerSites.meadowId!!
-    } else playerSites.meadowId!!
-
-    else -> sites[SiteTypes.getFromString(selection)]!!.random().siteId.value
+    }
   }
 }

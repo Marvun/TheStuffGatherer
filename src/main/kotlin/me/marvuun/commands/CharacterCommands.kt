@@ -9,17 +9,17 @@ fun characterCommands() = commands("Character") {
       startJourney()
     }
   }
-  slash("sites"){
+  slash("sites", "Shows you all your available sites, that you have found."){
     execute {
       printSites()
     }
   }
-  slash("location") {
+  slash("location" , "Tells you where you are and what can be found at your current location.") {
     execute {
       getLocation()
     }
   }
-  slash("levels") {
+  slash("levels", "Shows you your level progresses.") {
     execute {
       printLevels()
     }

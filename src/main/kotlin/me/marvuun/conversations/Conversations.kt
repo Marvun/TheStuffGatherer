@@ -24,12 +24,8 @@ fun GuildSlashCommandEvent<NoArgs>.travelConversation() = conversation("cancel",
     return@conversation
   }
 
-  if (checkIfBusy(player)) {
-    respond {
-      title = "You are currently busy. You are ${player.currentActivityType!!.name.lowercase()}."
-    }
-    return@conversation
-  }
+  checkIfBusy() ?: return@conversation
+
   val selection = promptSelect {
     content {
       title = "Where do you want to travel?"
@@ -72,6 +68,14 @@ fun GuildSlashCommandEvent<NoArgs>.travelConversation() = conversation("cancel",
 
 fun GuildSlashCommandEvent<NoArgs>.gatherConversation() = conversation("cancel", 30) {
   val player = getPlayer()
+
+  if (player.currentLocation == null) {
+    respond {
+      title = "There aren't any resources to be gathered here."
+    }
+    return@conversation
+  }
+
   val site = getSite()
   val tempCurrentResources = site.currentResources.toMutableMap()
   var isValid = true
@@ -96,10 +100,7 @@ fun GuildSlashCommandEvent<NoArgs>.gatherConversation() = conversation("cancel",
       description = "The maximum is in this case ${tempCurrentResources[selection]}."
     }
 
-    if (selectedResources[selection] == null)
-      selectedResources[selection] = amount.toInt()
-    else
-      selectedResources[selection] = selectedResources[selection]!! + amount.toInt()
+    selectedResources[selection] = (selectedResources[selection] ?: 0) + amount.toInt()
 
     tempCurrentResources[selection] = tempCurrentResources[selection]!! - amount.toInt()
 
