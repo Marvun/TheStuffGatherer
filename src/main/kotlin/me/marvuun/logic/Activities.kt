@@ -109,11 +109,11 @@ suspend fun GuildSlashCommandEvent<NoArgs>.finishGathering() {
     transaction {
 
       val inventoryEntries =
-        Inventory.find { (Inventories.id eq author.id.value) and (Inventories.itemId eq resource.short) }
+        Inventory.find { (Inventories.userId eq author.id.value) and (Inventories.itemId eq resource.short) }
 
       if (inventoryEntries.empty()) {
         Inventory.new {
-          userId = EntityID(author.id.value, Inventories)
+          userId = author.id.value
           itemId = resource.short
           this.amount = amount
         }
@@ -231,7 +231,7 @@ fun GuildSlashCommandEvent<*>.getSite() = transaction { Site.findById(getPlayer(
 
 fun GuildSlashCommandEvent<*>.getHome() = transaction { Home.find { Homes.userId eq this@getHome.author.id.value}.first() }
 
-fun GuildSlashCommandEvent<*>.getInventory() = transaction { Inventory.find {Inventories.id eq this@getInventory.author.id.value } }
+fun GuildSlashCommandEvent<*>.getInventory() = transaction { Inventory.find {Inventories.userId eq this@getInventory.author.id.value } }
 
 fun GuildSlashCommandEvent<NoArgs>.generateSites(): Int {
 

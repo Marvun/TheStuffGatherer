@@ -1,14 +1,12 @@
 package me.marvuun.database.tables
 
-import org.jetbrains.exposed.dao.id.IdTable
+import org.jetbrains.exposed.dao.id.IntIdTable
 
 @OptIn(ExperimentalUnsignedTypes::class)
-object Inventories : IdTable<ULong>(){
+object Inventories : IntIdTable(){
 
-  override val id = ulong("user_id").entityId()
-
+  val userId = ulong("user_id")
   val itemId = varchar("item_id", 255)
   val amount = integer("amount")
 
-  override val primaryKey = PrimaryKey(id, itemId)
 }

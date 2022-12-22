@@ -147,9 +147,9 @@ suspend fun GuildSlashCommandEvent<NoArgs>.printLevels() {
 }
 
 suspend fun GuildSlashCommandEvent<NoArgs>.printInventory() {
-  val inventory = getInventory()
+  val inventory = transaction { getInventory().toList() }
 
-  if (transaction { inventory.empty() }) {
+  if (inventory.isEmpty()) {
     respond {
       title = "Your inventory is empty."
     }
