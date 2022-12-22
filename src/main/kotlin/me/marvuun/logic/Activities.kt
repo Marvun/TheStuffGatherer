@@ -6,6 +6,7 @@ import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.marvuun.conversations.gatherConversation
 import me.marvuun.conversations.travelConversation
 import me.marvuun.database.daos.*
+import me.marvuun.database.tables.Homes
 import me.marvuun.database.tables.Inventories
 import me.marvuun.database.tables.Sites
 import me.marvuun.enums.ActivityTypes
@@ -18,6 +19,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
+import kotlin.math.absoluteValue
 
 suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
 
@@ -50,7 +52,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.finishActivity() {
 
   val player = getPlayer()
 
-  if (checkIfBusy() != null) {
+  if (transaction { player.currentActivityType } == null) {
     respond {
       title = "You aren't doing anything right now."
     }
@@ -145,15 +147,17 @@ suspend fun GuildSlashCommandEvent<NoArgs>.finishTraveling() {
 
   val player = getPlayer()
 
-  transaction {
-    player.currentLocation = player.destination
-    player.destination = null
-  }
-
-  val site = getSite()
-
   respond {
-    title = "You arrived at the ${site.type.getDisplayName()}."
+    transaction {
+      player.currentLocation = player.destination
+      player.destination = null
+    }
+    title = if (player.currentLocation == getHome().homeId.value) {
+      "You arrived at home."
+    } else {
+      val site = getSite()
+      "You arrived at the ${site.type.getDisplayName()}."
+    }
   }
 }
 
@@ -225,6 +229,10 @@ fun GuildSlashCommandEvent<*>.getLevels() = transaction { Level.findById(this@ge
 
 fun GuildSlashCommandEvent<*>.getSite() = transaction { Site.findById(getPlayer().currentLocation!!)!! }
 
+fun GuildSlashCommandEvent<*>.getHome() = transaction { Home.find { Homes.userId eq this@getHome.author.id.value}.first() }
+
+fun GuildSlashCommandEvent<*>.getInventory() = transaction { Inventory.find {Inventories.id eq this@getInventory.author.id.value } }
+
 fun GuildSlashCommandEvent<NoArgs>.generateSites(): Int {
 
   val player = getPlayer()
@@ -293,3 +301,9 @@ fun GuildSlashCommandEvent<NoArgs>.getSiteUUIDFromSelection(
     }
   }
 }
+
+fun calculateNewTravelTimeToHome(home: Home, travelTime: Long) =
+  if (home.travelTime == 0)
+     travelTime.toInt()
+  else
+    (home.travelTime - (-travelTime..travelTime).random()).absoluteValue.toInt()

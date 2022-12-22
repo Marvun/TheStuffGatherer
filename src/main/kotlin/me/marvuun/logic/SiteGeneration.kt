@@ -36,8 +36,8 @@ fun GuildSlashCommandEvent<NoArgs>.generateResources(rarityType: RarityTypes, si
 
 fun generateTravelTime(rarity: RarityTypes) =
   when (rarity) {
-    RarityTypes.S -> (10800000..14400000).random()
-    RarityTypes.A -> (5400000..7200000).random()
+    RarityTypes.S -> (5400000..7200000).random()
+    RarityTypes.A -> (3600000..5400000).random()
     RarityTypes.B -> (2700000..3600000).random()
     RarityTypes.C -> (1800000..2700000).random()
     RarityTypes.D -> (900000..1800000).random()

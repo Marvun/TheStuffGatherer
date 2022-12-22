@@ -3,19 +3,24 @@ package me.marvuun.logic
 import me.jakejmattson.discordkt.NoArgs
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.marvuun.database.daos.*
+import me.marvuun.database.tables.Homes
 import me.marvuun.database.tables.Levels
 import me.marvuun.database.tables.PlayerSites
 import me.marvuun.database.tables.Players
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.util.*
 
 suspend fun GuildSlashCommandEvent<NoArgs>.startJourney() {
   val response = transaction {
 
     if (Player.findById(author.id.value) == null) {
 
+      val homeUUID = UUID.randomUUID()
+
       Player.new {
         userId = EntityID(author.id.value, Players)
+        currentLocation = homeUUID
       }
 
       PlayerSite.new {
@@ -25,6 +30,12 @@ suspend fun GuildSlashCommandEvent<NoArgs>.startJourney() {
       Level.new {
         userId = EntityID(author.id.value, Levels)
       }
+
+      Home.new {
+        homeId = EntityID(homeUUID, Homes)
+        userId = author.id.value
+      }
+
       "You started your journey!"
     } else "You already started your journey!"
   }
@@ -37,10 +48,15 @@ suspend fun GuildSlashCommandEvent<NoArgs>.printSites() {
   val sites = getSites()
 
   respond {
-    title = "You have discovered the following sites:\n"
-    sites.forEach { (key, value) ->
-      field {
-        name = "${key.name.lowercase()}s: ${value.size}"
+    if (sites.isEmpty()){
+      title = "You don't have any discovered sites at the moment."
+    }
+    else {
+      title = "You have discovered the following sites:\n"
+      sites.forEach { (key, value) ->
+        field {
+          name = "${key.name.lowercase()}s: ${value.size}"
+        }
       }
     }
   }
@@ -55,6 +71,14 @@ suspend fun GuildSlashCommandEvent<NoArgs>.getLocation() {
     }
     return
   }
+
+  if (player.currentLocation == getHome().homeId.value) {
+    respond {
+      title = "You are currently at home."
+    }
+    return
+  }
+
 
   val site = getSite()
   val totalResources = transaction { site.totalResources }
@@ -119,6 +143,33 @@ suspend fun GuildSlashCommandEvent<NoArgs>.printLevels() {
       }
     }
 
+  }
+}
+
+suspend fun GuildSlashCommandEvent<NoArgs>.printInventory() {
+  val inventory = getInventory()
+
+  if (transaction { inventory.empty() }) {
+    respond {
+      title = "Your inventory is empty."
+    }
+    return
+  }
+
+  respond {
+    title = "You have the following items in your inventory:"
+
+    val items = mutableListOf<String>()
+
+    transaction {
+      inventory.forEach {
+        items.add("${it.amount}x ${Resource.getResourceFromShort(it.itemId).name.value}")
+      }
+    }
+
+    field {
+      name = items.joinToString("\n")
+    }
   }
 }
 

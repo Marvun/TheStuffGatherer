@@ -27,5 +27,11 @@ fun characterCommands() = commands("Character") {
       printLevels()
     }
   }
+  slash("inventory", "Shows you, what you've got in your inventory.") {
+    execute {
+      isRegisteredPlayer() ?: return@execute
+      printInventory()
+    }
+  }
 }
 

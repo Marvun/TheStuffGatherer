@@ -33,35 +33,60 @@ fun GuildSlashCommandEvent<NoArgs>.travelConversation() = conversation("cancel",
     sites.forEach {
       option(it.key.getDisplayName(), it.key.name, "${it.value.size} left")
     }
+    if (player.currentLocation != getHome().homeId.value)
+      option("Home", "HOME")
   }.first()
 
-  val site = transaction {
-
-    val siteUUID = getSiteUUIDFromSelection(selection, sites)
-
-    Site.findById(siteUUID)!!
-
-  }
-
-  if (player.currentLocation != site.siteId.value) {
+  if (selection == "HOME") {
     transaction {
-      player.currentActivity = "Travelling to a ${site.type.getDisplayName()}."
+      val home = getHome()
+
+      player.currentActivity = "Traveling home."
       player.currentActivityType = ActivityTypes.TRAVELING
-      player.activityDuration = site.travelTime.toLong()
+      player.activityDuration = home.travelTime.toLong()
       player.activityStartTime = System.currentTimeMillis()
-      player.destination = site.siteId.value
+      player.destination = home.homeId.value
+      home.travelTime = 0
     }
+
     respond {
       title =
-        "You will now travel ${millisecondsToDuration(site.travelTime.toLong())} to the ${site.type.name.lowercase()}."
-    }
-  } else {
-    respond {
-      title = "You already are at your current ${site.type.name.lowercase()} and therefore won't travel now."
-      description =
-        "If you want to visit a different ${site.type.name.lowercase()}, you either have to gather all the resources or abandon it with `/abandon`."
+        "You will now travel ${millisecondsToDuration(player.activityDuration)} to your home."
     }
   }
+  else {
+    val site = transaction {
+
+      val siteUUID = getSiteUUIDFromSelection(selection, sites)
+
+      Site.findById(siteUUID)!!
+
+    }
+
+    if (player.currentLocation != site.siteId.value) {
+      transaction {
+        val home = getHome()
+        home.travelTime = calculateNewTravelTimeToHome(home, site.travelTime.toLong())
+        player.currentActivity = "Traveling to a ${site.type.getDisplayName()}."
+        player.currentActivityType = ActivityTypes.TRAVELING
+        player.activityDuration = site.travelTime.toLong()
+        player.activityStartTime = System.currentTimeMillis()
+        player.destination = site.siteId.value
+      }
+      respond {
+        title =
+          "You will now travel ${millisecondsToDuration(site.travelTime.toLong())} to the ${site.type.name.lowercase()}."
+      }
+    } else {
+      respond {
+        title = "You already are at your current ${site.type.name.lowercase()} and therefore won't travel now."
+        description =
+          "If you want to visit a different ${site.type.name.lowercase()}, you either have to gather all the resources or abandon it with `/abandon`."
+      }
+    }
+  }
+
+
 
 
 }
