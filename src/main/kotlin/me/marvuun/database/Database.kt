@@ -14,7 +14,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 object Database {
   private val db by lazy {
     Database.connect(
-      "jdbc:mariadb://localhost:3306/thestuffgatherer", user = "root", password = "Gather"
+      "jdbc:mariadb://localhost:3306/thestuffgatherer", user = "TheGatherer", password = "09P8te5d%"
     )
 
     transaction {
@@ -31,7 +31,7 @@ object Database {
 
 fun createResourceTypes() {
 
-  val csvFile = Database.Companion::class.java.classLoader.getResource("resources.csv")!!.path
+  val csvFile = Database.Companion::class.java.classLoader.getResourceAsStream("resources.csv")!!
 
   csvReader().open(csvFile) {
 

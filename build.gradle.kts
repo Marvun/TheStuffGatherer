@@ -2,10 +2,16 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "1.7.20"
+    application
 }
 
 group = "me.marvuun"
-version = "1.0-SNAPSHOT"
+version = "0.0.1"
+
+application {
+    mainClass.set("me.marvuun.MainKt")
+
+}
 
 repositories {
     mavenCentral()
