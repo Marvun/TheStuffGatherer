@@ -2,6 +2,7 @@ package me.marvuun.logic
 
 import me.jakejmattson.discordkt.NoArgs
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
+import me.marvuun.conversations.abandonSiteConversation
 import me.marvuun.database.daos.*
 import me.marvuun.database.tables.Homes
 import me.marvuun.database.tables.Levels
@@ -172,4 +173,8 @@ suspend fun GuildSlashCommandEvent<NoArgs>.printInventory() {
     }
   }
 }
+
+suspend fun GuildSlashCommandEvent<NoArgs>.abandonSite() =
+  abandonSiteConversation().startSlashResponse(discord, author, this)
+
 

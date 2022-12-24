@@ -122,8 +122,8 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
     ) {
     val levelName = levelType.name.replace("Level", "")
     context!!.channel.createEmbed {
-      title = "You leveled up at $levelName."
-      description = "You are now level $level"
+      title = "${context.author.username} leveled up at $levelName."
+      description = "${context.author.username} is now level $level."
     }
   }
 

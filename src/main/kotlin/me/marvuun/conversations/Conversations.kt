@@ -4,9 +4,11 @@ import dev.kord.x.emoji.Emojis
 import me.jakejmattson.discordkt.NoArgs
 import me.jakejmattson.discordkt.arguments.AnyArg
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
+import me.jakejmattson.discordkt.conversations.ConversationBuilder
 import me.jakejmattson.discordkt.conversations.conversation
 import me.marvuun.database.daos.Resource
 import me.marvuun.database.daos.Site
+import me.marvuun.database.tables.Sites
 import me.marvuun.enums.ActivityTypes
 import me.marvuun.logic.*
 import me.marvuun.util.millisecondsToDuration
@@ -85,16 +87,12 @@ fun GuildSlashCommandEvent<NoArgs>.travelConversation() = conversation("cancel",
       }
     }
   }
-
-
-
-
 }
 
 fun GuildSlashCommandEvent<NoArgs>.gatherConversation() = conversation("cancel", 30) {
   val player = getPlayer()
 
-  if (player.currentLocation == null) {
+  if (player.currentLocation == null || player.currentLocation == getHome().homeId.value) {
     respond {
       title = "There aren't any resources to be gathered here."
     }
@@ -102,23 +100,19 @@ fun GuildSlashCommandEvent<NoArgs>.gatherConversation() = conversation("cancel",
   }
 
   val site = getSite()
-  val tempCurrentResources = site.currentResources.toMutableMap()
+  var tempCurrentResources = site.currentResources.toMutableMap()
   var isValid = true
-  val selectedResources = mutableMapOf<String, Int>()
+  var selectedResources = mutableMapOf<String, Int>()
 
   while (isValid) {
 
-    val selection = promptSelect {
-      content {
-        title = "Choose what you want to gather."
-      }
+    val selection = resourceSelectionPrompt(site, tempCurrentResources)
 
-      tempCurrentResources.forEach{ (short, amount) ->
-        val resource = Resource.getResourceFromShort(short)
-        option(resource.name.value, short, "$amount/${site.currentResources[short]}")
-      }
-
-    }.first()
+    if (selection == "ALL") {
+      selectedResources = site.currentResources.toMutableMap()
+      tempCurrentResources = mutableMapOf()
+      break
+    }
 
     val amount = promptUntilAsEmbed(AnyArg, "Please enter a valid amount.", { it.toIntOrNull() != null && it.toInt() > 0 && it.toInt() <= tempCurrentResources[selection]!! }) {
       title = "How often do you want to gather `${Resource.getResourceFromShort(selection).name.value}`?"
@@ -129,8 +123,7 @@ fun GuildSlashCommandEvent<NoArgs>.gatherConversation() = conversation("cancel",
 
     tempCurrentResources[selection] = tempCurrentResources[selection]!! - amount.toInt()
 
-    if (tempCurrentResources[selection] == 0)
-      tempCurrentResources.remove(selection)
+    tempCurrentResources = tempCurrentResources.filter { it.value != 0 }.toMutableMap()
 
     if (tempCurrentResources.isEmpty()) break
 
@@ -177,3 +170,77 @@ fun GuildSlashCommandEvent<NoArgs>.gatherConversation() = conversation("cancel",
     description = descriptionText
   }
 }
+
+fun GuildSlashCommandEvent<NoArgs>.abandonSiteConversation() = conversation("cancel", 30) {
+  val playerSites = getPlayerSites()
+
+  val playerSitesMap = transaction {
+    mapOf(
+      "Mine" to playerSites.mineId,
+      "Lake" to playerSites.lakeId,
+      "River" to playerSites.riverId,
+      "Forest" to playerSites.forestId,
+      "Meadow" to playerSites.meadowId
+    ).filter { it.value != null }
+  }
+
+  if (playerSitesMap.isEmpty()) {
+    respond {
+      title = "You don't have any sites you can abandon. Visit some first."
+    }
+    return@conversation
+  }
+
+  val selection = promptSelect {
+    content {
+      title = "Which site do you want to abandon?"
+      description = "Select a site or type `cancel` to cancel the action."
+    }
+    playerSitesMap.forEach { (name, _) ->
+      option(name)
+    }
+  }.first()
+
+  val uuid = playerSitesMap[selection]!!
+  val player = getPlayer()
+
+  if (transaction { player.destination == uuid }) {
+    respond {
+      title = "You can't abandon a site, that you are traveling to."
+    }
+    return@conversation
+  }
+
+  transaction {
+    if (player.currentLocation == uuid) {
+      player.currentLocation = null
+    }
+
+    val site = Site.find { Sites.id eq uuid}.first()
+    site.delete()
+  }
+
+  playerSites.deleteColumnWithUUID(uuid)
+
+  respond {
+    title = "You abandoned your current ${selection.lowercase()}."
+  }
+}
+
+suspend fun ConversationBuilder.resourceSelectionPrompt(site: Site, tempCurrentResources: MutableMap<String, Int>) =
+  promptSelect {
+    content {
+      title = "Choose what you want to gather."
+    }
+
+    if (tempCurrentResources.size > 1) {
+      option("All", "ALL", "You will collect all the available resources.")
+    }
+
+    tempCurrentResources.forEach{ (short, amount) ->
+      val resource = Resource.getResourceFromShort(short)
+      option(resource.name.value, short, "$amount/${site.currentResources[short]}")
+    }
+
+  }.first()
+

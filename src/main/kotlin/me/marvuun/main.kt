@@ -7,10 +7,10 @@ import me.marvuun.database.Database
 
 
 @OptIn(KordPreview::class)
-fun main(args: Array<String>) {
+fun main() {
   Database.init()
 
-  val token = args[0]
+  val token = System.getenv("BOT_TOKEN") ?: error("Please set the BOT_TOKEN environment variable!")
 
   bot(token) {
     prefix { "%" }

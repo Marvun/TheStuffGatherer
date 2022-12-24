@@ -33,5 +33,11 @@ fun characterCommands() = commands("Character") {
       printInventory()
     }
   }
+  slash("abandon", "Abandons a site, which still has resources left.") {
+   execute {
+     isRegisteredPlayer() ?: return@execute
+     abandonSite()
+   }
+  }
 }
 

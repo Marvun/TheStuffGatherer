@@ -4,6 +4,7 @@ import me.marvuun.database.tables.PlayerSites
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.UUID
 
 class PlayerSite(id: EntityID<ULong>): Entity<ULong>(id) {
@@ -17,12 +18,14 @@ class PlayerSite(id: EntityID<ULong>): Entity<ULong>(id) {
   var meadowId by PlayerSites.meadowId
 
   fun deleteColumnWithUUID(uuid: UUID) =
-    when (uuid) {
-      mineId -> mineId = null
-      lakeId -> lakeId = null
-      riverId -> riverId = null
-      forestId -> forestId = null
-      meadowId -> meadowId = null
-      else -> Unit
+    transaction {
+      when (uuid) {
+        mineId -> mineId = null
+        lakeId -> lakeId = null
+        riverId -> riverId = null
+        forestId -> forestId = null
+        meadowId -> meadowId = null
+        else -> Unit
+      }
     }
 }
