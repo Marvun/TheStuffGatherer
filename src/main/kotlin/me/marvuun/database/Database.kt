@@ -14,11 +14,13 @@ import org.jetbrains.exposed.sql.transactions.transaction
 object Database {
   private val db by lazy {
     Database.connect(
-      "jdbc:mariadb://localhost:3306/thestuffgatherer", user = "TheGatherer", password = "09P8te5d%"
+      url = "jdbc:mariadb://localhost:3306/thestuffgatherer",
+      user = System.getenv("DB_USER"),
+      password = System.getenv("DB_PASSWORD")
     )
 
     transaction {
-      SchemaUtils.create(Players, Sites, PlayerSites, Resources, Levels, Inventories, Homes)
+      SchemaUtils.create(Players, Sites, PlayerSites, Resources, Levels, Inventories, Homes, CurrentActivities)
       createResourceTypes()
     }
 

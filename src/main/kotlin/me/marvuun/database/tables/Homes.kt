@@ -11,5 +11,7 @@ object Homes: IdTable<UUID>() {
 
   val userId = ulong("user_id")
   val travelTime = integer("travel_time").default(0)
-
+  val furnaceLevel = integer("furnace_level").default(0)
+  val sawmillLevel = integer("sawmill_level").default(0)
+  val stoneCuttingStationLevel = integer("stone_cutting_station_level").default(0)
 }

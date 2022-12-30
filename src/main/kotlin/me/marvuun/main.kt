@@ -4,6 +4,8 @@ package me.marvuun
 import dev.kord.common.annotation.KordPreview
 import me.jakejmattson.discordkt.dsl.bot
 import me.marvuun.database.Database
+import me.marvuun.threads.createCurrentActivityCheckingThread
+import java.util.*
 
 
 @OptIn(KordPreview::class)
@@ -14,5 +16,8 @@ fun main() {
 
   bot(token) {
     prefix { "%" }
+    onStart {
+      createCurrentActivityCheckingThread()
+    }
   }
 }

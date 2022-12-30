@@ -1,5 +1,9 @@
 package me.marvuun.logic
 
+import dev.kord.core.behavior.channel.createMessage
+import dev.kord.core.entity.User
+import dev.kord.core.entity.channel.MessageChannel
+import dev.kord.rest.builder.message.create.embed
 import me.jakejmattson.discordkt.Args1
 import me.jakejmattson.discordkt.NoArgs
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
@@ -27,20 +31,28 @@ suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
 
   checkIfBusy() ?: return
 
-  respond {
-
-    if (args.first <= 0) {
+  if (args.first <= 0) {
+    respond {
       title = "You can't explore for ${args.first} minutes!"
-      return@respond
     }
+  }
 
-    transaction {
-      player.currentActivityType = ActivityTypes.EXPLORING
-      player.currentActivity = "Exploring the wild for new sites."
-      player.activityStartTime = System.currentTimeMillis()
-      player.activityDuration = args.first * 60000L
+  transaction {
+    val startTime = System.currentTimeMillis()
+    player.currentActivityType = ActivityTypes.EXPLORING
+    player.currentActivity = "Exploring the wild for new sites."
+    player.activityStartTime = startTime
+    player.activityDuration = args.first * 60000L
+
+    CurrentActivity.new {
+      guildId = guild.id.value
+      channelId = channel.id.value
+      userId = author.id.value
+      activityEnd = startTime + args.first * 60000L
     }
+  }
 
+  respond {
     title = "You went exploring for ${minutesToDuration(args.first)}!"
   }
 }
@@ -48,41 +60,22 @@ suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
 suspend fun GuildSlashCommandEvent<NoArgs>.startTravel() =
   travelConversation().startSlashResponse(discord, author, this)
 
-suspend fun GuildSlashCommandEvent<NoArgs>.finishActivity() {
+suspend fun finishActivity(user: User, channel: MessageChannel) {
 
-  val player = getPlayer()
+  val player = transaction { Player.findById(user.id.value) }!!
 
-  if (transaction { player.currentActivityType } == null) {
-    respond {
-      title = "You aren't doing anything right now."
-    }
-    return
-  }
-
-  val currentActivityType = player.currentActivityType!!
-  val expectedFinish = player.activityStartTime + player.activityDuration
-
-  if (expectedFinish > System.currentTimeMillis()) {
-    val timeLeft = expectedFinish - System.currentTimeMillis()
-    respond {
-      title = "You can't finish your activity yet."
-      description = "You are still ${currentActivityType.name.lowercase()} for ${millisecondsToDuration(timeLeft)}."
-    }
-    return
-  }
-
-  when (currentActivityType) {
+  when (player.currentActivityType!!) {
 
     ActivityTypes.EXPLORING -> {
-      finishExploring()
+      finishExploring(player, user, channel)
     }
 
     ActivityTypes.TRAVELING -> {
-      finishTraveling()
+      finishTraveling(player, user, channel)
     }
 
     ActivityTypes.GATHERING -> {
-      finishGathering()
+      finishGathering(player, user, channel)
     }
   }
   transaction {
@@ -91,41 +84,38 @@ suspend fun GuildSlashCommandEvent<NoArgs>.finishActivity() {
     player.activityDuration = 0
   }
 
-
 }
 
-suspend fun GuildSlashCommandEvent<NoArgs>.finishGathering() {
+suspend fun finishGathering(player: Player, user: User, channel: MessageChannel) {
 
-  val player = getPlayer()
   val resources = transaction { player.currentlyGathering }
   val transformedResources = mutableListOf<String>()
 
   resources.forEach { (short, count) ->
 
     val resource = Resource.getResourceFromShort(short)
-    val amount = count * calculateResourceAmount(resource)
-    val levels = getLevels()
+    val amount = count * calculateResourceAmount(resource, user)
+    val levels = transaction { Level.findById(user.id.value)!! }
 
     transaction {
 
       val inventoryEntries =
-        Inventory.find { (Inventories.userId eq author.id.value) and (Inventories.itemId eq resource.short) }
+        Inventory.find { (Inventories.userId eq user.id.value) and (Inventories.itemId eq resource.short) }
 
       if (inventoryEntries.empty()) {
         Inventory.new {
-          userId = author.id.value
+          userId = user.id.value
           itemId = resource.short
           this.amount = amount
         }
-      }
-      else {
+      } else {
         val inventoryEntry = inventoryEntries.first()
         inventoryEntry.amount = inventoryEntry.amount + amount
       }
     }
 
-    levels.context = this
-    levels.addExperience(resource, amount)
+
+    levels.addExperience(resource, amount, user, channel)
 
     transformedResources.add(
       "${amount}x ${resource.name.value}"
@@ -134,38 +124,50 @@ suspend fun GuildSlashCommandEvent<NoArgs>.finishGathering() {
 
   transaction { player.currentlyGathering = mutableMapOf() }
 
-  respond {
-    title = "You finished gathering."
-    field {
-      name = "You got the following resources:\n"
-      value = transformedResources.joinToString("\n")
+  channel.createMessage {
+    content = user.mention
+    embed {
+      title = "You finished gathering."
+      field {
+        name = "You got the following resources:\n"
+        value = transformedResources.joinToString("\n")
+      }
     }
   }
 }
 
-suspend fun GuildSlashCommandEvent<NoArgs>.finishTraveling() {
+suspend fun finishTraveling(player: Player, user: User, channel: MessageChannel) {
 
-  val player = getPlayer()
-
-  respond {
+  channel.createMessage {
     transaction {
       player.currentLocation = player.destination
       player.destination = null
     }
-    title = if (player.currentLocation == getHome().homeId.value) {
-      "You arrived at home."
-    } else {
-      val site = getSite()
-      "You arrived at the ${site.type.getDisplayName()}."
+
+    val home = transaction { Home.find { Homes.userId eq player.userId.value }.first() }
+
+    content = user.mention
+    embed {
+      title = if (player.currentLocation == home.homeId.value) {
+        "You arrived at home."
+      } else {
+        val site = transaction { Site.findById(player.currentLocation!!)!! }
+        "You arrived at the ${site.type.getDisplayName()}."
+      }
     }
   }
 }
 
-suspend fun GuildSlashCommandEvent<NoArgs>.finishExploring() {
-  val amount = generateSites()
-  respond {
-    title = "You finished exploring.\nYou found $amount sites."
+suspend fun finishExploring(player: Player, user: User, channel: MessageChannel) {
+  val amount = generateSites(player, user)
+
+  channel.createMessage {
+    content = user.mention
+    embed {
+      title = "You finished exploring.\nYou found $amount sites."
+    }
   }
+
 }
 
 suspend fun GuildSlashCommandEvent<NoArgs>.getActivity() {
@@ -215,8 +217,7 @@ suspend fun GuildSlashCommandEvent<*>.isRegisteredPlayer(): Unit? {
       title = "Please start your journey with `/start` first."
     }
     null
-  }
-  else Unit
+  } else Unit
 }
 
 fun GuildSlashCommandEvent<*>.getSites() =
@@ -229,13 +230,14 @@ fun GuildSlashCommandEvent<*>.getLevels() = transaction { Level.findById(this@ge
 
 fun GuildSlashCommandEvent<*>.getSite() = transaction { Site.findById(getPlayer().currentLocation!!)!! }
 
-fun GuildSlashCommandEvent<*>.getHome() = transaction { Home.find { Homes.userId eq this@getHome.author.id.value}.first() }
+fun GuildSlashCommandEvent<*>.getHome() =
+  transaction { Home.find { Homes.userId eq this@getHome.author.id.value }.first() }
 
-fun GuildSlashCommandEvent<*>.getInventory() = transaction { Inventory.find {Inventories.userId eq this@getInventory.author.id.value } }
+fun GuildSlashCommandEvent<*>.getInventory() =
+  transaction { Inventory.find { Inventories.userId eq this@getInventory.author.id.value } }
 
-fun GuildSlashCommandEvent<NoArgs>.generateSites(): Int {
+fun generateSites(player: Player, user: User): Int {
 
-  val player = getPlayer()
   var count = 0
 
   repeat((player.activityDuration / 60000).toInt()) {
@@ -248,11 +250,11 @@ fun GuildSlashCommandEvent<NoArgs>.generateSites(): Int {
       val siteType = SiteTypes.values().random()
 
       transaction {
-        val resources = generateResources(rarityType, siteType)
+        val resources = generateResources(rarityType, siteType, user)
 
         Site.new {
           siteId = EntityID(UUID.randomUUID(), Sites)
-          userId = author.id.value
+          userId = player.userId.value
           type = siteType
           rarity = rarityType
           currentResources = resources
@@ -304,6 +306,6 @@ fun GuildSlashCommandEvent<NoArgs>.getSiteUUIDFromSelection(
 
 fun calculateNewTravelTimeToHome(home: Home, travelTime: Long) =
   if (home.travelTime == 0)
-     travelTime.toInt()
+    travelTime.toInt()
   else
     (home.travelTime - (-travelTime..travelTime).random()).absoluteValue.toInt()
