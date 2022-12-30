@@ -30,20 +30,28 @@ suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
 
   checkIfBusy() ?: return
 
-  respond {
-
-    if (args.first <= 0) {
+  if (args.first <= 0) {
+    respond {
       title = "You can't explore for ${args.first} minutes!"
-      return@respond
     }
+  }
 
-    transaction {
-      player.currentActivityType = ActivityTypes.EXPLORING
-      player.currentActivity = "Exploring the wild for new sites."
-      player.activityStartTime = System.currentTimeMillis()
-      player.activityDuration = args.first * 60000L
+  transaction {
+    val startTime = System.currentTimeMillis()
+    player.currentActivityType = ActivityTypes.EXPLORING
+    player.currentActivity = "Exploring the wild for new sites."
+    player.activityStartTime = startTime
+    player.activityDuration = args.first * 60000L
+
+    CurrentActivity.new {
+      guildId = guild.id.value
+      channelId = channel.id.value
+      userId = author.id.value
+      activityEnd = startTime + args.first * 60000L
     }
+  }
 
+  respond {
     title = "You went exploring for ${minutesToDuration(args.first)}!"
   }
 }
@@ -58,7 +66,7 @@ suspend fun finishActivity(user: User, channel: MessageChannel) {
   when (player.currentActivityType!!) {
 
     ActivityTypes.EXPLORING -> {
-      finishExploring(player, user , channel)
+      finishExploring(player, user, channel)
     }
 
     ActivityTypes.TRAVELING -> {
@@ -99,8 +107,7 @@ suspend fun finishGathering(player: Player, user: User, channel: MessageChannel)
           itemId = resource.short
           this.amount = amount
         }
-      }
-      else {
+      } else {
         val inventoryEntry = inventoryEntries.first()
         inventoryEntry.amount = inventoryEntry.amount + amount
       }
@@ -133,7 +140,7 @@ suspend fun finishTraveling(player: Player, channel: MessageChannel) {
       player.destination = null
     }
 
-    val home = transaction { Home.find { Homes.userId eq player.userId.value}.first() }
+    val home = transaction { Home.find { Homes.userId eq player.userId.value }.first() }
 
     title = if (player.currentLocation == home.homeId.value) {
       "You arrived at home."
@@ -200,8 +207,7 @@ suspend fun GuildSlashCommandEvent<*>.isRegisteredPlayer(): Unit? {
       title = "Please start your journey with `/start` first."
     }
     null
-  }
-  else Unit
+  } else Unit
 }
 
 fun GuildSlashCommandEvent<*>.getSites() =
@@ -214,9 +220,11 @@ fun GuildSlashCommandEvent<*>.getLevels() = transaction { Level.findById(this@ge
 
 fun GuildSlashCommandEvent<*>.getSite() = transaction { Site.findById(getPlayer().currentLocation!!)!! }
 
-fun GuildSlashCommandEvent<*>.getHome() = transaction { Home.find { Homes.userId eq this@getHome.author.id.value}.first() }
+fun GuildSlashCommandEvent<*>.getHome() =
+  transaction { Home.find { Homes.userId eq this@getHome.author.id.value }.first() }
 
-fun GuildSlashCommandEvent<*>.getInventory() = transaction { Inventory.find {Inventories.userId eq this@getInventory.author.id.value } }
+fun GuildSlashCommandEvent<*>.getInventory() =
+  transaction { Inventory.find { Inventories.userId eq this@getInventory.author.id.value } }
 
 fun generateSites(player: Player, user: User): Int {
 
@@ -288,6 +296,6 @@ fun GuildSlashCommandEvent<NoArgs>.getSiteUUIDFromSelection(
 
 fun calculateNewTravelTimeToHome(home: Home, travelTime: Long) =
   if (home.travelTime == 0)
-     travelTime.toInt()
+    travelTime.toInt()
   else
     (home.travelTime - (-travelTime..travelTime).random()).absoluteValue.toInt()
