@@ -74,8 +74,28 @@ suspend fun GuildSlashCommandEvent<NoArgs>.getLocation() {
   }
 
   if (player.currentLocation == getHome().homeId.value) {
+    val home = getHome()
+
     respond {
       title = "You are currently at home."
+
+      field {
+        inline = true
+        name = "Furnace"
+        value = "Level: ${home.furnaceLevel}"
+      }
+
+      field {
+        inline = true
+        name = "Sawmill"
+        value = "Level: ${home.sawmillLevel}"
+      }
+
+      field {
+        inline = true
+        name = "Stone-Cutting Station"
+        value = "Level: ${home.stoneCuttingStationLevel}"
+      }
     }
     return
   }

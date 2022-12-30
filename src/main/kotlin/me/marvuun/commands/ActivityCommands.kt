@@ -18,12 +18,6 @@ fun activityCommands() = commands("Activity") {
       startTravel()
     }
   }
-  slash("finish", "Finish your current activity.") {
-    execute {
-      isRegisteredPlayer() ?: return@execute
-      finishActivity()
-    }
-  }
   slash("activity", "Tells you, what you are doing right now.") {
     execute {
       isRegisteredPlayer() ?: return@execute

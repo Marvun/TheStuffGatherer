@@ -1,13 +1,14 @@
 package me.marvuun.logic
 
-import me.jakejmattson.discordkt.NoArgs
-import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
+import dev.kord.core.entity.User
+import me.marvuun.database.daos.Level
 import me.marvuun.database.daos.Resource
 import me.marvuun.enums.ResourceCategories
+import org.jetbrains.exposed.sql.transactions.transaction
 
-fun GuildSlashCommandEvent<NoArgs>.calculateResourceAmount(resource: Resource): Int {
+fun calculateResourceAmount(resource: Resource, user: User): Int {
 
-  var level = getLevelForResourceCategory(resource)
+  var level = getLevelForResourceCategory(resource, user)
 
 
   return if (resource.maxAmount < resource.maxAmount * level.toDouble() / resource.maxAtLevel) resource.maxAmount
@@ -23,8 +24,8 @@ fun GuildSlashCommandEvent<NoArgs>.calculateResourceAmount(resource: Resource): 
 
 }
 
-fun GuildSlashCommandEvent<NoArgs>.getLevelForResourceCategory(resource: Resource): Int {
-  val levels = getLevels()
+fun getLevelForResourceCategory(resource: Resource, user: User): Int {
+  val levels = transaction { Level.findById(user.id.value)!! }
   return when (resource.type) {
     ResourceCategories.ORE -> levels.miningLevel
     ResourceCategories.LOG -> levels.woodcuttingLevel

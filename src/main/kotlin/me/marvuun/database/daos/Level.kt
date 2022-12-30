@@ -1,8 +1,8 @@
 package me.marvuun.database.daos
 
 import dev.kord.core.behavior.channel.createEmbed
-import me.jakejmattson.discordkt.NoArgs
-import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
+import dev.kord.core.entity.User
+import dev.kord.core.entity.channel.MessageChannel
 import me.marvuun.database.tables.Levels
 import me.marvuun.enums.ResourceCategories
 import org.jetbrains.exposed.dao.Entity
@@ -47,8 +47,8 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
   var neededFishingExp by Levels.neededFishingExp
 
 
-  var context: GuildSlashCommandEvent<NoArgs>? = null
-  private suspend fun checkForLevelUp() {
+
+  private suspend fun checkForLevelUp(user: User, channel: MessageChannel) {
 
     if (currentGatheringExp >= neededGatheringExp) {
       transaction {
@@ -56,8 +56,8 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
         gatheringLevel += 1
         neededGatheringExp = getNeededGatheringExperience()
       }
-      sendLevelUpMessage(context, ::gatheringLevel, gatheringLevel)
-      checkForLevelUp()
+      sendLevelUpMessage(user, channel, ::gatheringLevel, gatheringLevel)
+      checkForLevelUp(user, channel)
     }
     if (currentMiningExp >= neededMiningExp) {
       transaction {
@@ -65,8 +65,8 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
         miningLevel += 1
         neededMiningExp = getNeededExperience(miningLevel)
       }
-      sendLevelUpMessage(context, ::miningLevel, miningLevel)
-      checkForLevelUp()
+      sendLevelUpMessage(user, channel, ::miningLevel, miningLevel)
+      checkForLevelUp(user, channel)
     }
     if (currentWoodcuttingExp >= neededWoodcuttingExp) {
       transaction {
@@ -74,8 +74,8 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
         woodcuttingLevel += 1
         neededWoodcuttingExp = getNeededExperience(woodcuttingLevel)
       }
-      sendLevelUpMessage(context, ::woodcuttingLevel, woodcuttingLevel)
-      checkForLevelUp()
+      sendLevelUpMessage(user, channel, ::woodcuttingLevel, woodcuttingLevel)
+      checkForLevelUp(user, channel)
     }
     if (currentExtractionExp >= neededExtractionExp) {
       transaction {
@@ -83,8 +83,8 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
         extractionLevel += 1
         neededExtractionExp = getNeededExperience(extractionLevel)
       }
-      sendLevelUpMessage(context, ::extractionLevel, extractionLevel)
-      checkForLevelUp()
+      sendLevelUpMessage(user, channel, ::extractionLevel, extractionLevel)
+      checkForLevelUp(user, channel)
     }
     if (currentBotanyExp >= neededBotanyExp) {
       transaction {
@@ -92,8 +92,8 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
         botanyLevel += 1
         neededBotanyExp = getNeededExperience(botanyLevel)
       }
-      sendLevelUpMessage(context, ::botanyLevel, botanyLevel)
-      checkForLevelUp()
+      sendLevelUpMessage(user, channel, ::botanyLevel, botanyLevel)
+      checkForLevelUp(user, channel)
     }
     if (currentHarvestingExp >= neededHarvestingExp) {
       transaction {
@@ -101,8 +101,8 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
         harvestingLevel += 1
         neededHarvestingExp = getNeededExperience(harvestingLevel)
       }
-      sendLevelUpMessage(context, ::harvestingLevel, harvestingLevel)
-      checkForLevelUp()
+      sendLevelUpMessage(user, channel, ::harvestingLevel, harvestingLevel)
+      checkForLevelUp(user, channel)
     }
     if (currentFishingExp >= neededFishingExp) {
       transaction {
@@ -110,20 +110,21 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
         fishingLevel += 1
         neededFishingExp = getNeededExperience(fishingLevel)
       }
-      sendLevelUpMessage(context, ::fishingLevel, fishingLevel)
-      checkForLevelUp()
+      sendLevelUpMessage(user, channel, ::fishingLevel, fishingLevel)
+      checkForLevelUp(user, channel)
     }
   }
 
   private suspend fun sendLevelUpMessage(
-    context: GuildSlashCommandEvent<NoArgs>?,
+    user: User,
+    channel: MessageChannel,
     levelType: KMutableProperty0<Int>,
     level: Int
     ) {
     val levelName = levelType.name.replace("Level", "")
-    context!!.channel.createEmbed {
-      title = "${context.author.username} leveled up at $levelName."
-      description = "${context.author.username} is now level $level."
+    channel.createEmbed {
+      title = "${user.username} leveled up at $levelName."
+      description = "${user.username} is now level $level."
     }
   }
 
@@ -131,7 +132,7 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
 
   private fun getNeededExperience(level: Int) = ((level + 1) * sqrt(50.0)).pow(2).toInt()
 
-  suspend fun addExperience(resource: Resource, amount: Int) {
+  suspend fun addExperience(resource: Resource, amount: Int, user: User, channel: MessageChannel) {
 
     val exp = resource.maxAtLevel * 2 * amount
     transaction {
@@ -151,7 +152,7 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
       currentGatheringExp += exp
 
     }
-    checkForLevelUp()
+    checkForLevelUp(user, channel)
 
   }
 }

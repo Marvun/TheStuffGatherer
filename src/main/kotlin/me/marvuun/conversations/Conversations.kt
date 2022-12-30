@@ -6,6 +6,7 @@ import me.jakejmattson.discordkt.arguments.AnyArg
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.jakejmattson.discordkt.conversations.ConversationBuilder
 import me.jakejmattson.discordkt.conversations.conversation
+import me.marvuun.database.daos.CurrentActivity
 import me.marvuun.database.daos.Resource
 import me.marvuun.database.daos.Site
 import me.marvuun.database.tables.Sites
@@ -16,6 +17,8 @@ import me.marvuun.util.promptUntilAsEmbed
 import org.jetbrains.exposed.sql.transactions.transaction
 
 fun GuildSlashCommandEvent<NoArgs>.travelConversation() = conversation("cancel", 30) {
+
+
   val player = getPlayer()
   val sites = getSites()
 
@@ -35,28 +38,35 @@ fun GuildSlashCommandEvent<NoArgs>.travelConversation() = conversation("cancel",
     sites.forEach {
       option(it.key.getDisplayName(), it.key.name, "${it.value.size} left")
     }
-    if (player.currentLocation != getHome().homeId.value)
-      option("Home", "HOME")
+    if (player.currentLocation != getHome().homeId.value) option("Home", "HOME")
   }.first()
 
   if (selection == "HOME") {
+    val home = getHome()
+    val startTime = System.currentTimeMillis()
     transaction {
-      val home = getHome()
-
       player.currentActivity = "Traveling home."
       player.currentActivityType = ActivityTypes.TRAVELING
       player.activityDuration = home.travelTime.toLong()
-      player.activityStartTime = System.currentTimeMillis()
+      player.activityStartTime = startTime
       player.destination = home.homeId.value
+
+
+      CurrentActivity.new {
+        guildId = guild.id.value
+        channelId = channel.id.value
+        userId = user.id.value
+        activityEnd = startTime + home.travelTime.toLong()
+      }
+
       home.travelTime = 0
     }
 
     respond {
-      title =
-        "You will now travel ${millisecondsToDuration(player.activityDuration)} to your home."
+      title = "You will now travel ${millisecondsToDuration(player.activityDuration)} to your home."
     }
-  }
-  else {
+
+  } else {
     val site = transaction {
 
       val siteUUID = getSiteUUIDFromSelection(selection, sites)
@@ -68,17 +78,28 @@ fun GuildSlashCommandEvent<NoArgs>.travelConversation() = conversation("cancel",
     if (player.currentLocation != site.siteId.value) {
       transaction {
         val home = getHome()
+        val startTime = System.currentTimeMillis()
+
         home.travelTime = calculateNewTravelTimeToHome(home, site.travelTime.toLong())
         player.currentActivity = "Traveling to a ${site.type.getDisplayName()}."
         player.currentActivityType = ActivityTypes.TRAVELING
         player.activityDuration = site.travelTime.toLong()
-        player.activityStartTime = System.currentTimeMillis()
+        player.activityStartTime = startTime
         player.destination = site.siteId.value
+
+        CurrentActivity.new {
+          guildId = guild.id.value
+          channelId = channel.id.value
+          userId = user.id.value
+          activityEnd = startTime + site.travelTime.toLong()
+        }
       }
+
       respond {
         title =
           "You will now travel ${millisecondsToDuration(site.travelTime.toLong())} to the ${site.type.name.lowercase()}."
       }
+
     } else {
       respond {
         title = "You already are at your current ${site.type.name.lowercase()} and therefore won't travel now."
@@ -86,10 +107,12 @@ fun GuildSlashCommandEvent<NoArgs>.travelConversation() = conversation("cancel",
           "If you want to visit a different ${site.type.name.lowercase()}, you either have to gather all the resources or abandon it with `/abandon`."
       }
     }
+
   }
 }
 
-fun GuildSlashCommandEvent<NoArgs>.gatherConversation() = conversation("cancel", 30) {
+suspend fun GuildSlashCommandEvent<NoArgs>.gatherConversation() = conversation("cancel", 30) {
+
   val player = getPlayer()
 
   if (player.currentLocation == null || player.currentLocation == getHome().homeId.value) {
@@ -114,7 +137,9 @@ fun GuildSlashCommandEvent<NoArgs>.gatherConversation() = conversation("cancel",
       break
     }
 
-    val amount = promptUntilAsEmbed(AnyArg, "Please enter a valid amount.", { it.toIntOrNull() != null && it.toInt() > 0 && it.toInt() <= tempCurrentResources[selection]!! }) {
+    val amount = promptUntilAsEmbed(AnyArg,
+      "Please enter a valid amount.",
+      { it.toIntOrNull() != null && it.toInt() > 0 && it.toInt() <= tempCurrentResources[selection]!! }) {
       title = "How often do you want to gather `${Resource.getResourceFromShort(selection).name.value}`?"
       description = "The maximum is in this case ${tempCurrentResources[selection]}."
     }
@@ -144,9 +169,10 @@ fun GuildSlashCommandEvent<NoArgs>.gatherConversation() = conversation("cancel",
     duration += gatheringTime * amount
   }
 
+  val startTime = System.currentTimeMillis()
   transaction {
     site.currentResources = tempCurrentResources
-    player.activityStartTime = System.currentTimeMillis()
+    player.activityStartTime = startTime
     player.currentActivityType = ActivityTypes.GATHERING
     player.currentActivity = "Gathering resources at the ${site.type.name.lowercase()}."
     player.activityDuration = duration
@@ -161,9 +187,16 @@ fun GuildSlashCommandEvent<NoArgs>.gatherConversation() = conversation("cancel",
       site.delete()
     }
     "Since you will be gathering all the resources, that were left, this site will count as depleted."
+  } else null
+
+  transaction {
+    CurrentActivity.new {
+      guildId = guild.id.value
+      channelId = channel.id.value
+      userId = user.id.value
+      activityEnd = startTime + duration
+    }
   }
-  else
-    null
 
   respond {
     title = "You will be gathering for ${millisecondsToDuration(duration)} at the ${site.type.name.lowercase()}."
@@ -216,7 +249,7 @@ fun GuildSlashCommandEvent<NoArgs>.abandonSiteConversation() = conversation("can
       player.currentLocation = null
     }
 
-    val site = Site.find { Sites.id eq uuid}.first()
+    val site = Site.find { Sites.id eq uuid }.first()
     site.delete()
   }
 
@@ -237,7 +270,7 @@ suspend fun ConversationBuilder.resourceSelectionPrompt(site: Site, tempCurrentR
       option("All", "ALL", "You will collect all the available resources.")
     }
 
-    tempCurrentResources.forEach{ (short, amount) ->
+    tempCurrentResources.forEach { (short, amount) ->
       val resource = Resource.getResourceFromShort(short)
       option(resource.name.value, short, "$amount/${site.currentResources[short]}")
     }
