@@ -11,7 +11,7 @@ fun calculateResourceAmount(resource: Resource, user: User): Int {
   var level = getLevelForResourceCategory(resource, user)
 
 
-  return if (resource.maxAmount < resource.maxAmount * level.toDouble() / resource.maxAtLevel) resource.maxAmount
+  return if (resource.maxAmount <= resource.maxAmount * level.toDouble() / resource.maxAtLevel) resource.maxAmount
   else {
 
     val temp = level / 5
