@@ -1,8 +1,9 @@
 package me.marvuun.logic
 
-import dev.kord.core.behavior.channel.createEmbed
+import dev.kord.core.behavior.channel.createMessage
 import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.MessageChannel
+import dev.kord.rest.builder.message.create.embed
 import me.jakejmattson.discordkt.Args1
 import me.jakejmattson.discordkt.NoArgs
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
@@ -70,7 +71,7 @@ suspend fun finishActivity(user: User, channel: MessageChannel) {
     }
 
     ActivityTypes.TRAVELING -> {
-      finishTraveling(player, channel)
+      finishTraveling(player, user, channel)
     }
 
     ActivityTypes.GATHERING -> {
@@ -123,18 +124,21 @@ suspend fun finishGathering(player: Player, user: User, channel: MessageChannel)
 
   transaction { player.currentlyGathering = mutableMapOf() }
 
-  channel.createEmbed {
-    title = "You finished gathering."
-    field {
-      name = "You got the following resources:\n"
-      value = transformedResources.joinToString("\n")
+  channel.createMessage {
+    content = user.mention
+    embed {
+      title = "You finished gathering."
+      field {
+        name = "You got the following resources:\n"
+        value = transformedResources.joinToString("\n")
+      }
     }
   }
 }
 
-suspend fun finishTraveling(player: Player, channel: MessageChannel) {
+suspend fun finishTraveling(player: Player, user: User, channel: MessageChannel) {
 
-  channel.createEmbed {
+  channel.createMessage {
     transaction {
       player.currentLocation = player.destination
       player.destination = null
@@ -142,11 +146,14 @@ suspend fun finishTraveling(player: Player, channel: MessageChannel) {
 
     val home = transaction { Home.find { Homes.userId eq player.userId.value }.first() }
 
-    title = if (player.currentLocation == home.homeId.value) {
-      "You arrived at home."
-    } else {
-      val site = transaction { Site.findById(player.currentLocation!!)!! }
-      "You arrived at the ${site.type.getDisplayName()}."
+    content = user.mention
+    embed {
+      title = if (player.currentLocation == home.homeId.value) {
+        "You arrived at home."
+      } else {
+        val site = transaction { Site.findById(player.currentLocation!!)!! }
+        "You arrived at the ${site.type.getDisplayName()}."
+      }
     }
   }
 }
@@ -154,8 +161,11 @@ suspend fun finishTraveling(player: Player, channel: MessageChannel) {
 suspend fun finishExploring(player: Player, user: User, channel: MessageChannel) {
   val amount = generateSites(player, user)
 
-  channel.createEmbed {
-    title = "You finished exploring.\nYou found $amount sites."
+  channel.createMessage {
+    content = user.mention
+    embed {
+      title = "You finished exploring.\nYou found $amount sites."
+    }
   }
 
 }
