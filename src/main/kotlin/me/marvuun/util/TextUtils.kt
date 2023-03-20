@@ -17,3 +17,10 @@ fun stringToMap(s: String): MutableMap<String, String> =
   val (left, right) = it.split("=")
   left to right
 }.toMutableMap()
+
+
+
+fun String.toIntRange(): IntRange {
+  val components = this.split("..")
+  return IntRange(components.first().toInt(), components.last().toInt())
+}

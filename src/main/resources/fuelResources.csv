@@ -1,0 +1,4 @@
+name,short,type,heatLevel
+Firewood,fuel_fw,FUEL,5
+Gilna Coal,fuel_gil,FUEL,10
+Barivor Coal,fuel_bar,FUEL,20

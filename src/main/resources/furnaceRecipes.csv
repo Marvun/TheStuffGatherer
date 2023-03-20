@@ -1,0 +1,5 @@
+name,short,craftingDuration,type,requiredLevel,requiredHeatLevel,neededResources,outputAmount
+Onsoy Nuggets,fur_onn,120000,NUGGET,1,5,"{raw_on=15}","10..15"
+Onsoy Ingot,fur_oni,180000,INGOT,1,5,"{fur_onn=10}","1"
+Sufara Nuggets,fur_sufn,210000,NUGGET,5,10,"{raw_suf=15}","10..15"
+Sufara Ingot,fur_sufi,240000,INGOT,5,10,"{fur_sufn=12, fur_onn=3}","1"

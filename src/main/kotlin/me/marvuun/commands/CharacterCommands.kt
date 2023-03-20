@@ -34,10 +34,16 @@ fun characterCommands() = commands("Character") {
     }
   }
   slash("abandon", "Abandons a site, which still has resources left.") {
-   execute {
-     isRegisteredPlayer() ?: return@execute
-     abandonSite()
-   }
+    execute {
+      isRegisteredPlayer() ?: return@execute
+      abandonSite()
+    }
+  }
+  slash("upgrade", "Gives you information on what you can upgrade.") {
+    execute {
+      isRegisteredPlayer() ?: return@execute
+      openUpgradeMenu()
+    }
   }
 }
 

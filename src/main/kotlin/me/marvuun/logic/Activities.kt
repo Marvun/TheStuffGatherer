@@ -10,6 +10,9 @@ import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.marvuun.conversations.gatherConversation
 import me.marvuun.conversations.travelConversation
 import me.marvuun.database.daos.*
+import me.marvuun.database.daos.activities.CurrentPlayerActivity
+import me.marvuun.database.daos.resources.RawResource
+import me.marvuun.database.daos.resources.getResourceFromShort
 import me.marvuun.database.tables.Homes
 import me.marvuun.database.tables.Inventories
 import me.marvuun.database.tables.Sites
@@ -27,7 +30,7 @@ import kotlin.math.absoluteValue
 
 suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
 
-  val player = getPlayer()
+  val player = getPlayer(author)
 
   checkIfBusy() ?: return
 
@@ -35,6 +38,7 @@ suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
     respond {
       title = "You can't explore for ${args.first} minutes!"
     }
+    return
   }
 
   transaction {
@@ -44,7 +48,7 @@ suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
     player.activityStartTime = startTime
     player.activityDuration = args.first * 60000L
 
-    CurrentActivity.new {
+    CurrentPlayerActivity.new {
       guildId = guild.id.value
       channelId = channel.id.value
       userId = author.id.value
@@ -77,6 +81,10 @@ suspend fun finishActivity(user: User, channel: MessageChannel) {
     ActivityTypes.GATHERING -> {
       finishGathering(player, user, channel)
     }
+
+    ActivityTypes.CRAFTING -> {
+      finishCrafting(player, user, channel)
+    }
   }
   transaction {
     player.currentActivity = ""
@@ -88,13 +96,13 @@ suspend fun finishActivity(user: User, channel: MessageChannel) {
 
 suspend fun finishGathering(player: Player, user: User, channel: MessageChannel) {
 
-  val resources = transaction { player.currentlyGathering }
+  val resources = transaction { player.currentlyMaking }
   val transformedResources = mutableListOf<String>()
 
   resources.forEach { (short, count) ->
 
-    val resource = Resource.getResourceFromShort(short)
-    val amount = count * calculateResourceAmount(resource, user)
+    val resource = getResourceFromShort(short) as RawResource
+    val amount = count.first * calculateResourceAmount(resource, user)
     val levels = transaction { Level.findById(user.id.value)!! }
 
     transaction {
@@ -122,7 +130,7 @@ suspend fun finishGathering(player: Player, user: User, channel: MessageChannel)
     )
   }
 
-  transaction { player.currentlyGathering = mutableMapOf() }
+  transaction { player.currentlyMaking = mutableMapOf() }
 
   channel.createMessage {
     content = user.mention
@@ -171,7 +179,7 @@ suspend fun finishExploring(player: Player, user: User, channel: MessageChannel)
 }
 
 suspend fun GuildSlashCommandEvent<NoArgs>.getActivity() {
-  val player = getPlayer()
+  val player = getPlayer(author)
   val activity = player.currentActivityType
 
   respond {
@@ -197,7 +205,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.startGathering() =
 
 suspend fun GuildSlashCommandEvent<*>.checkIfBusy(): Unit? {
 
-  val player = getPlayer()
+  val player = getPlayer(author)
   val busy = transaction { player.currentActivityType } != null
 
   return if (busy) {
@@ -208,7 +216,7 @@ suspend fun GuildSlashCommandEvent<*>.checkIfBusy(): Unit? {
   } else Unit
 }
 
-fun GuildSlashCommandEvent<*>.getPlayer() = transaction { Player.findById(this@getPlayer.author.id.value) }!!
+fun getPlayer(user: User) = transaction { Player.findById(user.id.value) }!!
 
 suspend fun GuildSlashCommandEvent<*>.isRegisteredPlayer(): Unit? {
   val player = transaction { Player.findById(this@isRegisteredPlayer.author.id.value) }
@@ -220,21 +228,21 @@ suspend fun GuildSlashCommandEvent<*>.isRegisteredPlayer(): Unit? {
   } else Unit
 }
 
-fun GuildSlashCommandEvent<*>.getSites() =
-  transaction { Site.find(Sites.userId eq getPlayer().userId.value).groupBy { it.type } }
+fun getSites(user: User) =
+  transaction { Site.find(Sites.userId eq getPlayer(user).userId.value).groupBy { it.type } }
 
-fun GuildSlashCommandEvent<*>.getPlayerSites() =
-  transaction { PlayerSite.findById(this@getPlayerSites.author.id.value)!! }
+fun getPlayerSites(user: User) =
+  transaction { PlayerSite.findById(user.id.value)!! }
 
-fun GuildSlashCommandEvent<*>.getLevels() = transaction { Level.findById(this@getLevels.author.id.value)!! }
+fun getLevels(user: User) = transaction { Level.findById(user.id.value)!! }
 
-fun GuildSlashCommandEvent<*>.getSite() = transaction { Site.findById(getPlayer().currentLocation!!)!! }
+fun getSite(user: User) = transaction { Site.findById(getPlayer(user).currentLocation!!)!! }
 
-fun GuildSlashCommandEvent<*>.getHome() =
-  transaction { Home.find { Homes.userId eq this@getHome.author.id.value }.first() }
+fun getHome(user: User) =
+  transaction { Home.find { Homes.userId eq user.id.value }.first() }
 
-fun GuildSlashCommandEvent<*>.getInventory() =
-  transaction { Inventory.find { Inventories.userId eq this@getInventory.author.id.value } }
+fun getInventory(user: User) =
+  transaction { Inventory.find { Inventories.userId eq user.id.value } }
 
 fun generateSites(player: Player, user: User): Int {
 
@@ -245,7 +253,7 @@ fun generateSites(player: Player, user: User): Int {
     val randomNum = (1..100).random()
     val randomNum2 = (0..100).random()
 
-    if (randomNum2 > 50) {
+    if (randomNum2 > 90) {
       val rarityType = RarityTypes.values().find { randomNum in it.range }!!
       val siteType = SiteTypes.values().random()
 
@@ -273,7 +281,7 @@ fun GuildSlashCommandEvent<NoArgs>.getSiteUUIDFromSelection(
   selection: String, sites: Map<SiteTypes, List<Site>>
 ): UUID {
 
-  val playerSites = getPlayerSites()
+  val playerSites = getPlayerSites(author)
 
   return when (SiteTypes.getFromString(selection)) {
 

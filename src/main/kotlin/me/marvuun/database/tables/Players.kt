@@ -15,7 +15,7 @@ object Players : IdTable<ULong>() {
   val currentActivityType = enumerationByName<ActivityTypes>("current_activity_type", 255).nullable()
   val currentActivity = varchar("current_activity", 255).default("")
   val currentLocation = uuid("current_location").nullable()
-  val currentlyGathering = varchar("currently_gathering", 255).default("")
+  val currentlyMaking = varchar("currently_making", 255).default("")
   val destination = uuid("destination").nullable()
 
 }

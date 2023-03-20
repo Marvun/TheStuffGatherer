@@ -30,4 +30,10 @@ fun activityCommands() = commands("Activity") {
       startGathering()
     }
   }
+  slash("craft", "Start to craft items with your resources.") {
+    execute {
+      isRegisteredPlayer() ?: return@execute
+      openCraftingMenu()
+    }
+  }
 }

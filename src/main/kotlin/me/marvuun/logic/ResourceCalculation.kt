@@ -2,11 +2,11 @@ package me.marvuun.logic
 
 import dev.kord.core.entity.User
 import me.marvuun.database.daos.Level
-import me.marvuun.database.daos.Resource
+import me.marvuun.database.daos.resources.RawResource
 import me.marvuun.enums.ResourceCategories
 import org.jetbrains.exposed.sql.transactions.transaction
 
-fun calculateResourceAmount(resource: Resource, user: User): Int {
+fun calculateResourceAmount(resource: RawResource, user: User): Int {
 
   var level = getLevelForResourceCategory(resource, user)
 
@@ -24,7 +24,7 @@ fun calculateResourceAmount(resource: Resource, user: User): Int {
 
 }
 
-fun getLevelForResourceCategory(resource: Resource, user: User): Int {
+fun getLevelForResourceCategory(resource: RawResource, user: User): Int {
   val levels = transaction { Level.findById(user.id.value)!! }
   return when (resource.type) {
     ResourceCategories.ORE -> levels.miningLevel
@@ -36,7 +36,9 @@ fun getLevelForResourceCategory(resource: Resource, user: User): Int {
     ResourceCategories.SKIN -> TODO()
     ResourceCategories.FISH -> levels.fishingLevel
     ResourceCategories.PLANT, ResourceCategories.HERB -> levels.botanyLevel
-    ResourceCategories.NUGGET -> TODO()
+    ResourceCategories.NUGGET, ResourceCategories.INGOT -> levels.meltingLevel
+    ResourceCategories.PLANK -> levels.sawingLevel
+    ResourceCategories.STONE_BLOCK -> levels.stoneCuttingLevel
 
   }
 

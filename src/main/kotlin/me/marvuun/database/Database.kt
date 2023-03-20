@@ -2,10 +2,18 @@ package me.marvuun.database
 
 
 import com.github.doyaaaaaken.kotlincsv.dsl.csvReader
-import me.marvuun.database.daos.Resource
+import me.marvuun.database.daos.resources.*
+import me.marvuun.database.daos.stations.Furnace
+import me.marvuun.database.daos.stations.Sawmill
+import me.marvuun.database.daos.stations.StoneCutter
 import me.marvuun.database.tables.*
+import me.marvuun.database.tables.Furnaces
+import me.marvuun.database.tables.Sawmills
+import me.marvuun.database.tables.resources.*
 import me.marvuun.enums.ResourceCategories
 import me.marvuun.enums.SiteTypes
+import me.marvuun.util.stringToMap
+import me.marvuun.util.toIntRange
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -20,8 +28,32 @@ object Database {
     )
 
     transaction {
-      SchemaUtils.create(Players, Sites, PlayerSites, Resources, Levels, Inventories, Homes, CurrentActivities)
-      createResourceTypes()
+      SchemaUtils.create(
+        Players,
+        Sites,
+        PlayerSites,
+        RawResources,
+        FuelResources,
+        FurnaceRecipes,
+        SawmillRecipes,
+        StoneCutterRecipes,
+        Levels,
+        Inventories,
+        Homes,
+        CurrentPlayerActivities,
+        CurrentStationUpgrades,
+        Furnaces,
+        Sawmills,
+        StoneCutters
+      )
+      createRawResources()
+      createFuelResources()
+      createFurnaceRecipes()
+      createFurnaceLevels()
+      createSawmillRecipes()
+      createSawmillLevels()
+      createStoneCutterRecipes()
+      createStoneCutterLevels()
     }
 
   }
@@ -31,18 +63,18 @@ object Database {
   }
 }
 
-fun createResourceTypes() {
+fun createRawResources() {
 
-  val csvFile = Database.Companion::class.java.classLoader.getResourceAsStream("resources.csv")!!
+  val csvFile = Database.Companion::class.java.classLoader.getResourceAsStream("rawResources.csv")!!
 
   csvReader().open(csvFile) {
 
     readAllAsSequence().forEach {
 
-      if (it[0] != "name" && Resource.findById(it[0]) == null)
+      if (it[0] != "name" && RawResource.findById(it[0]) == null)
 
-        Resource.new {
-          name = EntityID(it[0], Resources)
+        RawResource.new {
+          name = EntityID(it[0], RawResources)
           short = it[1]
           gatherDuration = it[2].toLong()
           type = ResourceCategories.getFromString(it[3])
@@ -52,5 +84,163 @@ fun createResourceTypes() {
         }
     }
   }
+}
 
+fun createFuelResources() {
+
+  val csvFile = Database.Companion::class.java.classLoader.getResourceAsStream("fuelResources.csv")!!
+
+  csvReader().open(csvFile) {
+
+    readAllAsSequence().forEach {
+
+      if (it[0] != "name" && FuelResource.findById(it[0]) == null)
+
+        FuelResource.new {
+          name = EntityID(it[0], RawResources)
+          short = it[1]
+          type = ResourceCategories.getFromString(it[2])
+          heatLevel = it[3].toInt()
+        }
+    }
+  }
+}
+
+fun createFurnaceRecipes() {
+
+  val csvFile = Database.Companion::class.java.classLoader.getResourceAsStream("furnaceRecipes.csv")!!
+
+  csvReader().open(csvFile) {
+
+    readAllAsSequence().forEach {
+
+      if (it[0] != "name" && FurnaceRecipe.findById(it[0]) == null) {
+
+        FurnaceRecipe.new {
+          name = EntityID(it[0], FurnaceRecipes)
+          short = it[1]
+          craftingDuration = it[2].toLong()
+          type = ResourceCategories.getFromString(it[3])
+          requiredLevel = it[4].toInt()
+          requiredHeatLevel = it[5].toInt()
+          neededResources = stringToMap(it[6])
+            .mapValues { entry -> entry.value.toInt() }
+          outputAmount = it[7].toIntRange()
+        }
+      }
+    }
+  }
+}
+
+fun createFurnaceLevels() {
+
+  val csvFile = Database.Companion::class.java.classLoader.getResourceAsStream("furnaceLevels.csv")!!
+
+  csvReader().open(csvFile) {
+
+    readAllAsSequence().forEach {
+
+      if (it[0] != "constructionTime" && transaction { Furnace.find { Furnaces.requiredLevel eq it[2].toInt() }.empty() } )
+
+        Furnace.new {
+          constructionTime = it[0].toLong()
+          neededResources = stringToMap(it[1])
+            .mapValues { entry -> entry.value.toInt() }
+          requiredLevel = it[2].toInt()
+        }
+
+    }
+  }
+}
+
+fun createSawmillRecipes() {
+
+  val csvFile = Database.Companion::class.java.classLoader.getResourceAsStream("sawmillRecipes.csv")!!
+
+  csvReader().open(csvFile) {
+
+    readAllAsSequence().forEach {
+
+      if (it[0] != "name" && SawmillRecipe.findById(it[0]) == null) {
+
+        SawmillRecipe.new {
+          name = EntityID(it[0], SawmillRecipes)
+          short = it[1]
+          craftingDuration = it[2].toLong()
+          type = ResourceCategories.getFromString(it[3])
+          requiredLevel = it[4].toInt()
+          neededResources = stringToMap(it[5])
+            .mapValues { entry -> entry.value.toInt() }
+          outputAmount = it[6].toIntRange()
+        }
+      }
+    }
+  }
+}
+
+fun createSawmillLevels() {
+
+  val csvFile = Database.Companion::class.java.classLoader.getResourceAsStream("sawmillLevels.csv")!!
+
+  csvReader().open(csvFile) {
+
+    readAllAsSequence().forEach {
+
+      if (it[0] != "constructionTime" && transaction { Sawmill.find { Sawmills.requiredLevel eq it[2].toInt() }.empty() } )
+
+        Sawmill.new {
+          constructionTime = it[0].toLong()
+          neededResources = stringToMap(it[1])
+            .mapValues { entry -> entry.value.toInt() }
+          requiredLevel = it[2].toInt()
+        }
+
+    }
+  }
+}
+
+fun createStoneCutterRecipes() {
+
+  val csvFile = Database.Companion::class.java.classLoader.getResourceAsStream("stoneCutterRecipes.csv")!!
+
+  csvReader().open(csvFile) {
+
+    readAllAsSequence().forEach {
+
+      if (it[0] != "name" && StoneCutterRecipe.findById(it[0]) == null) {
+
+        StoneCutterRecipe.new {
+          name = EntityID(it[0], StoneCutterRecipes)
+          short = it[1]
+          craftingDuration = it[2].toLong()
+          type = ResourceCategories.getFromString(it[3])
+          requiredLevel = it[4].toInt()
+          neededResources = stringToMap(it[5])
+            .mapValues { entry -> entry.value.toInt() }
+          outputAmount = it[6].toIntRange()
+        }
+      }
+    }
+  }
+}
+
+fun createStoneCutterLevels() {
+
+  val csvFile = Database.Companion::class.java.classLoader.getResourceAsStream("stoneCutterLevels.csv")!!
+
+  csvReader().open(csvFile) {
+
+    readAllAsSequence().forEach {
+
+      if (it[0] != "constructionTime" && transaction { StoneCutter.find { StoneCutters.requiredLevel eq it[2].toInt() }.empty() } )
+
+        StoneCutter.new {
+          constructionTime = it[0].toLong()
+          neededResources = stringToMap(it[1])
+            .mapValues { entry -> entry.value.toInt() }
+          requiredLevel = it[2].toInt()
+        }
+
+    }
+  }
 }

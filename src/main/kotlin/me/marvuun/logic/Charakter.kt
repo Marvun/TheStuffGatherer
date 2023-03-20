@@ -4,6 +4,7 @@ import me.jakejmattson.discordkt.NoArgs
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.marvuun.conversations.abandonSiteConversation
 import me.marvuun.database.daos.*
+import me.marvuun.database.daos.resources.getResourceFromShort
 import me.marvuun.database.tables.Homes
 import me.marvuun.database.tables.Levels
 import me.marvuun.database.tables.PlayerSites
@@ -46,7 +47,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.startJourney() {
 }
 
 suspend fun GuildSlashCommandEvent<NoArgs>.printSites() {
-  val sites = getSites()
+  val sites = getSites(author)
 
   respond {
     if (sites.isEmpty()){
@@ -64,7 +65,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.printSites() {
 }
 
 suspend fun GuildSlashCommandEvent<NoArgs>.getLocation() {
-  val player = getPlayer()
+  val player = getPlayer(author)
 
   if (player.currentLocation == null) {
     respond {
@@ -73,8 +74,8 @@ suspend fun GuildSlashCommandEvent<NoArgs>.getLocation() {
     return
   }
 
-  if (player.currentLocation == getHome().homeId.value) {
-    val home = getHome()
+  if (player.currentLocation == getHome(author).homeId.value) {
+    val home = getHome(author)
 
     respond {
       title = "You are currently at home."
@@ -94,14 +95,14 @@ suspend fun GuildSlashCommandEvent<NoArgs>.getLocation() {
       field {
         inline = true
         name = "Stone-Cutting Station"
-        value = "Level: ${home.stoneCuttingStationLevel}"
+        value = "Level: ${home.stoneCutterLevel}"
       }
     }
     return
   }
 
 
-  val site = getSite()
+  val site = getSite(author)
   val totalResources = transaction { site.totalResources }
   val currentResources = transaction { site.currentResources }
 
@@ -112,7 +113,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.getLocation() {
       text = "Hint: Use /gather to start gathering."
     }
     totalResources.forEach { (short, amount) ->
-      val resource = Resource.getResourceFromShort(short)
+      val resource = getResourceFromShort(short)
       field {
         name = resource.name.value
         value = "${currentResources[resource.short]}/$amount"
@@ -122,7 +123,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.getLocation() {
 }
 
 suspend fun GuildSlashCommandEvent<NoArgs>.printLevels() {
-  val levels = getLevels()
+  val levels = getLevels(author)
 
   respond {
     transaction {
@@ -162,13 +163,18 @@ suspend fun GuildSlashCommandEvent<NoArgs>.printLevels() {
         name = "__Fishing__ : ${levels.fishingLevel}"
         value = "${levels.currentFishingExp}/${levels.neededFishingExp}"
       }
+
+      field {
+        name = "__Melting__ : ${levels.meltingLevel}"
+        value = "${levels.currentMeltingExp}/${levels.neededMeltingExp}"
+      }
     }
 
   }
 }
 
 suspend fun GuildSlashCommandEvent<NoArgs>.printInventory() {
-  val inventory = transaction { getInventory().toList() }
+  val inventory = transaction { getInventory(author).toList() }
 
   if (inventory.isEmpty()) {
     respond {
@@ -184,7 +190,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.printInventory() {
 
     transaction {
       inventory.forEach {
-        items.add("${it.amount}x ${Resource.getResourceFromShort(it.itemId).name.value}")
+        items.add("${it.amount}x ${getResourceFromShort(it.itemId).name.value}")
       }
     }
 

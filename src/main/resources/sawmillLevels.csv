@@ -1,0 +1,11 @@
+constructionTime,neededResources,requiredLevel
+30000,"{raw_red=10, fur_oni=2}",1
+60000,"{raw_red=5, saw_red=10, fur_oni=3}",2
+120000,"{saw_red=25, fur_oni=5}",3
+210000,"{saw_red=35, fur_oni=5}",4
+300000,"{saw_red=50, fur_oni=7}",5
+390000,"{saw_red=45, fur_oni=5, raw_suc=20, fur_sufi=3}",6
+480000,"{saw_red=40, fur_oni=4, raw_suc=10, saw_suc=25, fur_sufi=4}",7
+600000,"{saw_red=30, fur_oni=3, saw_suc=40, fur_sufi=6}",8
+720000,"{saw_red=20, fur_oni=2, saw_suc=55, fur_sufi=8}",9
+810000,"{saw_suc=70, fur_sufi=10}",10

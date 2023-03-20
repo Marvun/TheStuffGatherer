@@ -1,0 +1,11 @@
+constructionTime,neededResources,requiredLevel
+30000,"{raw_sev=10, saw_red=10}",1
+60000,"{raw_sev=10, stc_sev=10, saw_red=15}",2
+120000,"{stc_sev=25, saw_red=20}",3
+210000,"{stc_sev=35, saw_red=30}",4
+300000,"{stc_sev=50, saw_red=40}",5
+390000,"{stc_sev=45, saw_red=35, stc_gru=20, saw_suc=15}",6
+480000,"{stc_sev=40, saw_red=30, stc_gru=30, saw_suc=20}",7
+600000,"{stc_sev=30, saw_red=25, stc_gru=40, saw_suc=30}",8
+720000,"{stc_sev=20, saw_red=15, stc_gru=55, saw_suc=40}",9
+810000,"{stc_gru=70, saw_suc=55}",10

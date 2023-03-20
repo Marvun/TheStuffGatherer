@@ -1,8 +1,8 @@
 package me.marvuun.logic
 
 import dev.kord.core.entity.User
-import me.marvuun.database.daos.Resource
-import me.marvuun.database.tables.Resources
+import me.marvuun.database.daos.resources.RawResource
+import me.marvuun.database.tables.resources.RawResources
 import me.marvuun.enums.RarityTypes
 import me.marvuun.enums.ResourceCategories
 import me.marvuun.enums.SiteTypes
@@ -24,7 +24,7 @@ fun generateResources(rarityType: RarityTypes, siteType: SiteTypes, user: User):
   if (typeCount is Int && amount is IntRange) {
 
     repeat(typeCount) {
-      val type = Resource.find { Resources.type inList resourceCategories }.toList().filter { it.maxAtLevel - getLevelForResourceCategory(it, user) <= 10 }.random().short
+      val type = RawResource.find { RawResources.type inList resourceCategories }.toList().filter { it.maxAtLevel - getLevelForResourceCategory(it, user) <= 10 }.random().short
       if (map[type] == null) map[type] = amount.random()
       else map[type] = map[type]!! + amount.random()
     }
