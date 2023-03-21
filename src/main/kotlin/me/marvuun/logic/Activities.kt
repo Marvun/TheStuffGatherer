@@ -102,7 +102,7 @@ suspend fun finishGathering(player: Player, user: User, channel: MessageChannel)
   resources.forEach { (short, count) ->
 
     val resource = getResourceFromShort(short) as RawResource
-    val amount = count.first * calculateResourceAmount(resource, user)
+    val amount = count.first * resource.calculateResourceAmount(user)
     val levels = transaction { Level.findById(user.id.value)!! }
 
     transaction {

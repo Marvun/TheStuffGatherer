@@ -25,7 +25,7 @@ class PlayerSite(id: EntityID<ULong>): Entity<ULong>(id) {
         riverId -> riverId = null
         forestId -> forestId = null
         meadowId -> meadowId = null
-        else -> Unit
+        else -> throw Exception("Could not delete player site with uuid $uuid, since it didn't match anything.")
       }
     }
 }

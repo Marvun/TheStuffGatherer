@@ -217,4 +217,3 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
 
   }
 }
-

@@ -106,7 +106,7 @@ suspend fun askForAmount(ci: ComponentInteraction, ingredients: MutableList<Reso
   }
 
   if (fuel != null) {
-    maxPossibleCrafts.add(inventory.find { it.itemId.replace("raw_", "fuel_") == fuel?.short }!!.amount / 5)
+    maxPossibleCrafts.add(inventory.find { it.itemId.replace("raw_", "fuel_") == fuel.short }!!.amount / 5)
     maxPossibleCrafts.sort()
   }
 
@@ -151,7 +151,7 @@ suspend fun startCrafting(ci: ComponentInteraction, ingredients: MutableList<Res
 
     if (fuel != null) {
       invEntries =
-        inventory.filter { fuel?.short == it.itemId.replace("raw_", "fuel_") && it.userId == ci.user.id.value }
+        inventory.filter { fuel.short == it.itemId.replace("raw_", "fuel_") && it.userId == ci.user.id.value }
       invEntries.forEach {
         it.amount = it.amount - amount * 5
       }

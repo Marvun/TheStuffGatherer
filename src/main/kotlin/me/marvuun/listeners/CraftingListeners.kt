@@ -38,8 +38,6 @@ fun craftingSelectListeners() = listeners {
         ingredients[0] = getResourceFromShort(ci.values.first())
         updateCraftingMenu(ingredients, ci)
       }
-
-
     }
   }
 }
@@ -51,12 +49,11 @@ fun craftingButtonListeners() = listeners {
       "changeRecipeAmount" -> {
         maxAmount = askForAmount(ci, ingredients)
       }
+
       "confirmRecipe" -> {
         startCrafting(ci, ingredients, amount)
       }
     }
-
-
   }
 }
 
@@ -67,22 +64,15 @@ fun craftingModalListeners() = listeners {
     when (msi.modalId) {
       "amountModal" -> {
         val modalOutput = msi.textInputs["amountTextInput"]!!.value!!
-        if (modalOutput.toIntOrNull() == null || modalOutput.toInt() > maxAmount || modalOutput.toInt() < 1) {
-          if (ingredients[0] is FurnaceRecipe)
-            updateCraftingMenu(ingredients, msi, 1, false, needsHeat = true)
-          else
-            updateCraftingMenu(ingredients, msi, 1, false)
-        }
-        else {
-          if (ingredients[0] is FurnaceRecipe)
-            updateCraftingMenu(ingredients, msi, modalOutput.toInt(), needsHeat = true)
-          else
-            updateCraftingMenu(ingredients, msi, modalOutput.toInt())
-          amount = modalOutput.toInt()
-        }
-
+        val needsHeat = ingredients[0] is FurnaceRecipe
+        if (modalOutput.toIntOrNull() == null || modalOutput.toInt() > maxAmount || modalOutput.toInt() < 1)
+          updateCraftingMenu(ingredients, msi, 1, false, needsHeat)
+        else
+          updateCraftingMenu(ingredients, msi, modalOutput.toInt(), needsHeat)
+        amount = modalOutput.toInt()
       }
 
     }
+
   }
 }
