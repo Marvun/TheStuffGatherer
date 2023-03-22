@@ -1,5 +1,7 @@
 package me.marvuun.database.daos.resources
 
+import dev.kord.core.entity.User
+import me.marvuun.database.daos.Level
 import me.marvuun.database.daos.activities.CurrentStationUpgrade.Companion.transform
 import me.marvuun.database.tables.resources.*
 import me.marvuun.enums.ResourceCategories
@@ -22,6 +24,25 @@ abstract class Resource<T : Comparable<T>>(id: EntityID<T>) : Entity<T>(id) {
       {
         it.toIntRange()
       })
+  fun getLevelForResourceCategory(user: User): Int {
+    val levels = transaction { Level.findById(user.id.value)!! }
+    return when (type) {
+      ResourceCategories.ORE -> levels.miningLevel
+      ResourceCategories.LOG -> levels.woodcuttingLevel
+      ResourceCategories.STONE, ResourceCategories.GEM, ResourceCategories.SAND, ResourceCategories.FUEL -> levels.extractionLevel
+      ResourceCategories.BERRY, ResourceCategories.FRUIT -> levels.harvestingLevel
+      ResourceCategories.ANIMAL -> TODO()
+      ResourceCategories.MEAT -> TODO()
+      ResourceCategories.SKIN -> TODO()
+      ResourceCategories.FISH -> levels.fishingLevel
+      ResourceCategories.PLANT, ResourceCategories.HERB -> levels.botanyLevel
+      ResourceCategories.NUGGET, ResourceCategories.INGOT -> levels.meltingLevel
+      ResourceCategories.PLANK -> levels.sawingLevel
+      ResourceCategories.STONE_BLOCK -> levels.stoneCuttingLevel
+
+    }
+
+  }
 }
 
 fun getResourceFromShort(short: String) =

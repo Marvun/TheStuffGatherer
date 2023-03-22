@@ -2,6 +2,7 @@ package me.marvuun.database
 
 
 import com.github.doyaaaaaken.kotlincsv.dsl.csvReader
+import me.marvuun.database.daos.SellingInformation
 import me.marvuun.database.daos.resources.*
 import me.marvuun.database.daos.stations.Furnace
 import me.marvuun.database.daos.stations.Sawmill
@@ -44,8 +45,12 @@ object Database {
         CurrentStationUpgrades,
         Furnaces,
         Sawmills,
-        StoneCutters
+        StoneCutters,
+        Cities,
+        Buyers,
+        SellingInformations
       )
+      createSellingInformation()
       createRawResources()
       createFuelResources()
       createFurnaceRecipes()
@@ -60,6 +65,25 @@ object Database {
 
   fun init() {
     db
+  }
+}
+
+fun createSellingInformation() {
+  val csvFile = Database.Companion::class.java.classLoader.getResourceAsStream("sellingInformation.csv")!!
+
+  csvReader().open(csvFile) {
+
+    readAllAsSequence().forEach {
+
+      if (it[0] != "short" && SellingInformation.findById(it[0]) == null)
+
+        SellingInformation.new {
+          short = EntityID(it[0], SellingInformations)
+          baseAmount = it[1].toInt()
+          basePrice = it[2].toInt()
+          unlockedAtLevel = it[3].toInt()
+        }
+    }
   }
 }
 

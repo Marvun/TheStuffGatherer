@@ -244,17 +244,17 @@ fun getHome(user: User) =
 fun getInventory(user: User) =
   transaction { Inventory.find { Inventories.userId eq user.id.value } }
 
-fun generateSites(player: Player, user: User): Int {
+fun generateSites(player: Player, user: User, amount: Int? = null, rarity: RarityTypes? = null): Int {
 
   var count = 0
 
-  repeat((player.activityDuration / 60000).toInt()) {
+  repeat(amount ?: (player.activityDuration / 60000).toInt()) {
 
     val randomNum = (1..100).random()
     val randomNum2 = (0..100).random()
 
     if (randomNum2 > 90) {
-      val rarityType = RarityTypes.values().find { randomNum in it.range }!!
+      val rarityType = rarity ?: RarityTypes.values().find { randomNum in it.range }!!
       val siteType = SiteTypes.values().random()
 
       transaction {
@@ -264,10 +264,10 @@ fun generateSites(player: Player, user: User): Int {
           siteId = EntityID(UUID.randomUUID(), Sites)
           userId = player.userId.value
           type = siteType
-          rarity = rarityType
+          this.rarity = rarityType
           currentResources = resources
           totalResources = resources
-          travelTime = generateTravelTime(rarity)
+          travelTime = generateTravelTime(rarityType)
         }
       }
       count++

@@ -11,7 +11,6 @@ object Sites: IdTable<UUID>() {
   override val id = uuid("site_id").entityId()
   override val primaryKey = PrimaryKey(id)
 
-
   val userId = ulong("user_id")
   val type = enumerationByName<SiteTypes>("site_type", 255)
   val rarity = enumerationByName<RarityTypes>("rarity_type", 255)

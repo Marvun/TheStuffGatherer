@@ -5,10 +5,7 @@ import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.marvuun.conversations.abandonSiteConversation
 import me.marvuun.database.daos.*
 import me.marvuun.database.daos.resources.getResourceFromShort
-import me.marvuun.database.tables.Homes
-import me.marvuun.database.tables.Levels
-import me.marvuun.database.tables.PlayerSites
-import me.marvuun.database.tables.Players
+import me.marvuun.database.tables.*
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
@@ -36,6 +33,14 @@ suspend fun GuildSlashCommandEvent<NoArgs>.startJourney() {
       Home.new {
         homeId = EntityID(homeUUID, Homes)
         userId = author.id.value
+      }
+
+      City.new {
+        cityId = EntityID(UUID.randomUUID(), Cities)
+        userId = author.id.value
+        travelTime = 300000
+        buyers = generateBuyers(author)
+        purchasableItems = mutableMapOf()
       }
 
       "You started your journey!"
