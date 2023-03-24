@@ -1,11 +1,10 @@
-package me.marvuun.database.tables
+package me.marvuun.database.tables.locations
 
 import me.marvuun.enums.StationTypes
-import org.jetbrains.exposed.dao.id.IdTable
 import java.util.*
 
 @OptIn(ExperimentalUnsignedTypes::class)
-object Homes: IdTable<UUID>() {
+object Homes: Locations() {
 
   override val id = uuid("home_id").entityId()
   override val primaryKey = PrimaryKey(id)

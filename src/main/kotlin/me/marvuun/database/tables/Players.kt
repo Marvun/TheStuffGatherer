@@ -17,5 +17,5 @@ object Players : IdTable<ULong>() {
   val currentLocation = uuid("current_location").nullable()
   val currentlyMaking = varchar("currently_making", 255).default("")
   val destination = uuid("destination").nullable()
-
+  val occupiedCoordinates = mediumText("occupied_coordinates")
 }

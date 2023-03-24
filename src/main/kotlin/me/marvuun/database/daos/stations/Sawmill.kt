@@ -1,6 +1,6 @@
 package me.marvuun.database.daos.stations
 
-import me.marvuun.database.daos.transformResources
+import me.marvuun.database.daos.location.transformResources
 import me.marvuun.database.tables.Sawmills
 import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.id.EntityID

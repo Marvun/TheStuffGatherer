@@ -1,21 +1,26 @@
 package me.marvuun.logic
 
 import dev.kord.core.behavior.channel.createMessage
+import dev.kord.core.behavior.interaction.respondEphemeral
+import dev.kord.core.behavior.interaction.updateEphemeralMessage
 import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.MessageChannel
+import dev.kord.core.entity.interaction.ComponentInteraction
+import dev.kord.rest.builder.message.create.actionRow
 import dev.kord.rest.builder.message.create.embed
 import me.jakejmattson.discordkt.Args1
 import me.jakejmattson.discordkt.NoArgs
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.marvuun.conversations.gatherConversation
-import me.marvuun.conversations.travelConversation
 import me.marvuun.database.daos.*
 import me.marvuun.database.daos.activities.CurrentPlayerActivity
+import me.marvuun.database.daos.location.*
 import me.marvuun.database.daos.resources.RawResource
 import me.marvuun.database.daos.resources.getResourceFromShort
-import me.marvuun.database.tables.Homes
+import me.marvuun.database.tables.locations.Cities
+import me.marvuun.database.tables.locations.Homes
 import me.marvuun.database.tables.Inventories
-import me.marvuun.database.tables.Sites
+import me.marvuun.database.tables.locations.Sites
 import me.marvuun.enums.ActivityTypes
 import me.marvuun.enums.RarityTypes
 import me.marvuun.enums.SiteTypes
@@ -26,7 +31,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
-import kotlin.math.absoluteValue
+import kotlin.math.sqrt
 
 suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
 
@@ -61,8 +66,188 @@ suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
   }
 }
 
-suspend fun GuildSlashCommandEvent<NoArgs>.startTravel() =
-  travelConversation().startSlashResponse(discord, author, this)
+suspend fun GuildSlashCommandEvent<NoArgs>.openTravelMenu() {
+  val player = getPlayer(author)
+  val sites = getSites(author)
+
+  checkIfBusy() ?: return
+
+  interaction!!.respondEphemeral {
+    embed {
+      title = "Where do you want to travel?"
+    }
+    actionRow {
+      selectMenu("travelMenu") {
+        transaction {
+          if (player.currentLocation != getHome(author).homeId.value)
+            option("Home", "home") {
+              description = "Travel to your home."
+            }
+          if (!City.find { Cities.userId eq player.userId.value and (Cities.id neq player.currentLocation)}.empty())
+            option("Cities", "cities") {
+              description = "Travel to one of your discovered cities."
+            }
+          if (sites.isNotEmpty())
+            option("Sites", "sites") {
+              description = "Travel to one of your sites to gather resources."
+            }
+        }
+      }
+    }
+  }
+
+}
+
+suspend fun openTravelCategoryMenu(ci: ComponentInteraction, category: String) {
+  val home = getHome(ci.user)
+  val player = getPlayer(ci.user)
+  val sites = getSites(ci.user)
+  val guild = ci.message.getGuild()
+
+  when (category) {
+    "home" -> {
+
+      val startTime = System.currentTimeMillis()
+      transaction {
+        updateTravelTimes(home.homeId.value, ci.user)
+        player.currentActivity = "Traveling home."
+        player.currentActivityType = ActivityTypes.TRAVELING
+        player.activityDuration = home.travelTime.toLong()
+        player.activityStartTime = startTime
+        player.destination = home.homeId.value
+
+        CurrentPlayerActivity.new {
+          guildId = guild.id.value
+          channelId = ci.channelId.value
+          userId = ci.user.id.value
+          activityEnd = startTime + home.travelTime.toLong()
+        }
+
+        home.travelTime = 0
+      }
+      ci.updateEphemeralMessage {
+        components = mutableListOf()
+        embed {
+          title = "You will now travel ${millisecondsToDuration(player.activityDuration)} to your home."
+        }
+      }
+    }
+    "sites" -> {
+      ci.updateEphemeralMessage {
+        embed {
+          title = "To what kind of site do you want to travel?"
+        }
+        actionRow {
+          selectMenu("travelSiteMenu") {
+            sites.forEach {
+              option(it.key.getDisplayName(), it.key.name) {
+                description = "${it.value.size} left"
+              }
+            }
+          }
+        }
+      }
+    }
+    "cities" -> {
+      ci.updateEphemeralMessage {
+        embed {
+          title = "To which city do you want to travel?"
+        }
+        actionRow {
+          selectMenu("travelCityMenu") {
+            transaction {
+              City.find { Cities.userId eq player.userId.value and (Cities.id neq player.currentLocation)}.forEach {
+                option(it.name, it.name) {
+                  description = "Travel time: ${millisecondsToDuration(it.travelTime.toLong())}"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+suspend fun openTravelSiteMenu(ci: ComponentInteraction, selectedSiteType: String) {
+  val sites = getSites(ci.user)
+  val player = getPlayer(ci.user)
+  val home = getHome(ci.user)
+  val guild = ci.message.getGuild()
+  val site = transaction {
+
+    val siteUUID = getSiteUUIDFromSelection(selectedSiteType, sites, ci.user)
+
+    Site.findById(siteUUID)!!
+
+  }
+
+  if (player.currentLocation != site.siteId.value) {
+    transaction {
+
+      val startTime = System.currentTimeMillis()
+      updateTravelTimes(site.siteId.value, ci.user)
+      player.currentActivity = "Traveling to a ${site.type.getDisplayName()}."
+      player.currentActivityType = ActivityTypes.TRAVELING
+      player.activityDuration = site.travelTime.toLong()
+      player.activityStartTime = startTime
+      player.destination = site.siteId.value
+
+      CurrentPlayerActivity.new {
+        guildId = guild.id.value
+        channelId = ci.channelId.value
+        userId = ci.user.id.value
+        activityEnd = startTime + site.travelTime.toLong()
+      }
+    }
+    ci.updateEphemeralMessage {
+    components = mutableListOf()
+      embed {
+        title = "You will now travel ${millisecondsToDuration(site.travelTime.toLong())} to the ${site.type.name.lowercase()}."
+      }
+    }
+
+  } else {
+    ci.updateEphemeralMessage {
+      components = mutableListOf()
+      embed {
+        title = "You already are at your current ${site.type.name.lowercase()} and therefore won't travel now."
+        description =
+          "If you want to visit a different ${site.type.name.lowercase()}, you either have to gather all the resources or abandon it with `/abandon`."
+      }
+    }
+  }
+}
+
+suspend fun openTravelCityMenu(ci: ComponentInteraction, selectedCityName: String) {
+  val player = getPlayer(ci.user)
+  val home = getHome(ci.user)
+  val guild = ci.message.getGuild()
+  val city = transaction {  City.find { Cities.name eq selectedCityName and (Cities.userId eq ci.user.id.value)}.first() }
+  transaction {
+    val startTime = System.currentTimeMillis()
+
+    updateTravelTimes(city.cityId.value, ci.user)
+    player.currentActivity = "Traveling to ${city.name}."
+    player.currentActivityType = ActivityTypes.TRAVELING
+    player.activityDuration = city.travelTime.toLong()
+    player.activityStartTime = startTime
+    player.destination = city.cityId.value
+
+    CurrentPlayerActivity.new {
+      guildId = guild.id.value
+      channelId = ci.channelId.value
+      userId = ci.user.id.value
+      activityEnd = startTime + city.travelTime.toLong()
+    }
+  }
+  ci.updateEphemeralMessage {
+    components = mutableListOf()
+    embed {
+      title = "You will now travel ${millisecondsToDuration(city.travelTime.toLong())} to ${city.name}."
+    }
+  }
+}
 
 suspend fun finishActivity(user: User, channel: MessageChannel) {
 
@@ -120,6 +305,7 @@ suspend fun finishGathering(player: Player, user: User, channel: MessageChannel)
         val inventoryEntry = inventoryEntries.first()
         inventoryEntry.amount = inventoryEntry.amount + amount
       }
+
     }
 
 
@@ -145,6 +331,7 @@ suspend fun finishGathering(player: Player, user: User, channel: MessageChannel)
 }
 
 suspend fun finishTraveling(player: Player, user: User, channel: MessageChannel) {
+  val location = getLocationFromUUID(user.id.value, player.destination!!)
 
   channel.createMessage {
     transaction {
@@ -152,15 +339,20 @@ suspend fun finishTraveling(player: Player, user: User, channel: MessageChannel)
       player.destination = null
     }
 
-    val home = transaction { Home.find { Homes.userId eq player.userId.value }.first() }
-
     content = user.mention
+
     embed {
-      title = if (player.currentLocation == home.homeId.value) {
-        "You arrived at home."
-      } else {
-        val site = transaction { Site.findById(player.currentLocation!!)!! }
-        "You arrived at the ${site.type.getDisplayName()}."
+      title = when (location) {
+        is Home -> {
+          "You arrived at home."
+        }
+        is City -> {
+          "Your arrived at ${location.name}."
+        }
+        else -> {
+          location as Site
+          "You arrived at the ${location.type.getDisplayName()}."
+        }
       }
     }
   }
@@ -209,8 +401,10 @@ suspend fun GuildSlashCommandEvent<*>.checkIfBusy(): Unit? {
   val busy = transaction { player.currentActivityType } != null
 
   return if (busy) {
-    respond {
-      title = "You are currently busy. You are ${player.currentActivityType!!.name.lowercase()}."
+    interaction!!.respondEphemeral {
+      embed {
+        title = "You are currently busy. You are ${player.currentActivityType!!.name.lowercase()}."
+      }
     }
     null
   } else Unit
@@ -244,6 +438,9 @@ fun getHome(user: User) =
 fun getInventory(user: User) =
   transaction { Inventory.find { Inventories.userId eq user.id.value } }
 
+fun getCities(user: User) =
+  transaction { City.find { Cities.userId eq user.id.value } }
+
 fun generateSites(player: Player, user: User, amount: Int? = null, rarity: RarityTypes? = null): Int {
 
   var count = 0
@@ -253,21 +450,27 @@ fun generateSites(player: Player, user: User, amount: Int? = null, rarity: Rarit
     val randomNum = (1..100).random()
     val randomNum2 = (0..100).random()
 
-    if (randomNum2 > 90) {
+    if (randomNum2 > 0) {
       val rarityType = rarity ?: RarityTypes.values().find { randomNum in it.range }!!
       val siteType = SiteTypes.values().random()
 
       transaction {
         val resources = generateResources(rarityType, siteType, user)
+        val coordinates = generateCoordinates(rarityType, user)
+        val occupiedCoordinates = player.occupiedCoordinates
+        occupiedCoordinates.add(coordinates)
+        player.occupiedCoordinates = occupiedCoordinates
 
         Site.new {
+          xCoordinate = coordinates[0]
+          yCoordinate = coordinates[1]
           siteId = EntityID(UUID.randomUUID(), Sites)
           userId = player.userId.value
           type = siteType
           this.rarity = rarityType
           currentResources = resources
           totalResources = resources
-          travelTime = generateTravelTime(rarityType)
+          travelTime = (sqrt(xCoordinate.toDouble() * xCoordinate.toDouble() + yCoordinate.toDouble() * yCoordinate.toDouble()) * 10000).toInt()
         }
       }
       count++
@@ -277,11 +480,11 @@ fun generateSites(player: Player, user: User, amount: Int? = null, rarity: Rarit
   return count
 }
 
-fun GuildSlashCommandEvent<NoArgs>.getSiteUUIDFromSelection(
-  selection: String, sites: Map<SiteTypes, List<Site>>
+fun getSiteUUIDFromSelection(
+  selection: String, sites: Map<SiteTypes, List<Site>>, user: User
 ): UUID {
 
-  val playerSites = getPlayerSites(author)
+  val playerSites = getPlayerSites(user)
 
   return when (SiteTypes.getFromString(selection)) {
 
@@ -311,9 +514,3 @@ fun GuildSlashCommandEvent<NoArgs>.getSiteUUIDFromSelection(
     }
   }
 }
-
-fun calculateNewTravelTimeToHome(home: Home, travelTime: Long) =
-  if (home.travelTime == 0)
-    travelTime.toInt()
-  else
-    (home.travelTime - (-travelTime..travelTime).random()).absoluteValue.toInt()

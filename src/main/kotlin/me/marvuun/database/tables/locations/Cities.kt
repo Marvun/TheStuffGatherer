@@ -1,13 +1,13 @@
-package me.marvuun.database.tables
+package me.marvuun.database.tables.locations
 
-import org.jetbrains.exposed.dao.id.IdTable
 import java.util.*
 
 @OptIn(ExperimentalUnsignedTypes::class)
-object Cities: IdTable<UUID>() {
-  override val id = Sites.uuid("city_id").entityId()
+object Cities: Locations() {
+  override val id = uuid("city_id").entityId()
   override val primaryKey = PrimaryKey(id)
 
+  val name = varchar("name", 30)
   val userId = ulong("user_id")
   val travelTime = integer("travel_time")
   val buyers = varchar("buyers", 1023)

@@ -1,15 +1,16 @@
-package me.marvuun.database.daos
+package me.marvuun.database.daos.location
 
-import me.marvuun.database.tables.Homes
+import me.marvuun.database.tables.locations.Homes
 import me.marvuun.enums.StationTypes
-import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import java.util.*
 
-class Home(id: EntityID<UUID>) : Entity<UUID>(id) {
+class Home(id: EntityID<UUID>) : Location(id) {
   companion object : EntityClass<UUID, Home>(Homes)
 
+  override var xCoordinate by Homes.xCoordinate
+  override var yCoordinate by Homes.yCoordinate
   var homeId by Homes.id
   var userId by Homes.userId
   var travelTime by Homes.travelTime

@@ -10,6 +10,9 @@ import me.marvuun.database.daos.stations.StoneCutter
 import me.marvuun.database.tables.*
 import me.marvuun.database.tables.Furnaces
 import me.marvuun.database.tables.Sawmills
+import me.marvuun.database.tables.locations.Cities
+import me.marvuun.database.tables.locations.Homes
+import me.marvuun.database.tables.locations.Sites
 import me.marvuun.database.tables.resources.*
 import me.marvuun.enums.ResourceCategories
 import me.marvuun.enums.SiteTypes

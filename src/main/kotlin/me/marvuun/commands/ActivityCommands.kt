@@ -15,7 +15,7 @@ fun activityCommands() = commands("Activity") {
   slash("travel", "Travel to a specific place.") {
     execute {
       isRegisteredPlayer() ?: return@execute
-      startTravel()
+      openTravelMenu()
     }
   }
   slash("activity", "Tells you, what you are doing right now.") {

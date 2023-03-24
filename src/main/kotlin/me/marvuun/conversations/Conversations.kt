@@ -6,112 +6,17 @@ import me.jakejmattson.discordkt.arguments.AnyArg
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.jakejmattson.discordkt.conversations.ConversationBuilder
 import me.jakejmattson.discordkt.conversations.conversation
-import me.marvuun.database.daos.*
 import me.marvuun.database.daos.activities.CurrentPlayerActivity
+import me.marvuun.database.daos.location.Site
 import me.marvuun.database.daos.resources.RawResource
 import me.marvuun.database.daos.resources.getResourceFromShort
-import me.marvuun.database.tables.Sites
+import me.marvuun.database.tables.locations.Sites
 import me.marvuun.enums.ActivityTypes
 import me.marvuun.logic.*
 import me.marvuun.util.millisecondsToDuration
 import me.marvuun.util.promptUntilAsEmbed
 import me.marvuun.util.toIntRange
 import org.jetbrains.exposed.sql.transactions.transaction
-
-fun GuildSlashCommandEvent<NoArgs>.travelConversation() = conversation("cancel", 30) {
-
-
-  val player = getPlayer(author)
-  val sites = getSites(author)
-
-  if (sites.isEmpty()) {
-    respond {
-      title = "There is nothing you can travel to."
-    }
-    return@conversation
-  }
-
-  checkIfBusy() ?: return@conversation
-
-  val selection = promptSelect {
-    content {
-      title = "Where do you want to travel?"
-    }
-    sites.forEach {
-      option(it.key.getDisplayName(), it.key.name, "${it.value.size} left")
-    }
-    if (player.currentLocation != getHome(author).homeId.value) option("Home", "HOME")
-  }.first()
-
-  if (selection == "HOME") {
-    val home = getHome(author)
-    val startTime = System.currentTimeMillis()
-    transaction {
-      player.currentActivity = "Traveling home."
-      player.currentActivityType = ActivityTypes.TRAVELING
-      player.activityDuration = home.travelTime.toLong()
-      player.activityStartTime = startTime
-      player.destination = home.homeId.value
-
-
-      CurrentPlayerActivity.new {
-        guildId = guild.id.value
-        channelId = channel.id.value
-        userId = user.id.value
-        activityEnd = startTime + home.travelTime.toLong()
-      }
-
-      home.travelTime = 0
-    }
-
-    respond {
-      title = "You will now travel ${millisecondsToDuration(player.activityDuration)} to your home."
-    }
-
-  } else {
-    val site = transaction {
-
-      val siteUUID = getSiteUUIDFromSelection(selection, sites)
-
-      Site.findById(siteUUID)!!
-
-    }
-
-    if (player.currentLocation != site.siteId.value) {
-      transaction {
-        val home = getHome(author)
-        val startTime = System.currentTimeMillis()
-
-        home.travelTime = calculateNewTravelTimeToHome(home, site.travelTime.toLong())
-        player.currentActivity = "Traveling to a ${site.type.getDisplayName()}."
-        player.currentActivityType = ActivityTypes.TRAVELING
-        player.activityDuration = site.travelTime.toLong()
-        player.activityStartTime = startTime
-        player.destination = site.siteId.value
-
-        CurrentPlayerActivity.new {
-          guildId = guild.id.value
-          channelId = channel.id.value
-          userId = user.id.value
-          activityEnd = startTime + site.travelTime.toLong()
-        }
-      }
-
-      respond {
-        title =
-          "You will now travel ${millisecondsToDuration(site.travelTime.toLong())} to the ${site.type.name.lowercase()}."
-      }
-
-    } else {
-      respond {
-        title = "You already are at your current ${site.type.name.lowercase()} and therefore won't travel now."
-        description =
-          "If you want to visit a different ${site.type.name.lowercase()}, you either have to gather all the resources or abandon it with `/abandon`."
-      }
-    }
-
-  }
-}
 
 suspend fun GuildSlashCommandEvent<NoArgs>.gatherConversation() = conversation("cancel", 30) {
 
@@ -184,8 +89,14 @@ suspend fun GuildSlashCommandEvent<NoArgs>.gatherConversation() = conversation("
   val descriptionText = if (tempCurrentResources.isEmpty()) {
     transaction {
       player.currentLocation = null
+
       val playerSite = getPlayerSites(author)
       playerSite.deleteColumnWithUUID(site.siteId.value)
+
+      val occupiedCoordinates = player.occupiedCoordinates
+      occupiedCoordinates.remove(mutableListOf(site.xCoordinate, site.yCoordinate))
+      player.occupiedCoordinates = occupiedCoordinates
+
       site.delete()
     }
     "Since you will be gathering all the resources, that were left, this site will be depleted."

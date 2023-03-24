@@ -1,6 +1,6 @@
 package me.marvuun.database.daos.resources
 
-import me.marvuun.database.daos.Home
+import me.marvuun.database.daos.location.Home
 import me.marvuun.database.daos.Inventory
 import me.marvuun.database.tables.resources.FurnaceRecipes
 import me.marvuun.database.tables.resources.SawmillRecipes

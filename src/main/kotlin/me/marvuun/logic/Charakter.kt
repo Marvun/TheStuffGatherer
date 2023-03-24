@@ -4,11 +4,18 @@ import me.jakejmattson.discordkt.NoArgs
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.marvuun.conversations.abandonSiteConversation
 import me.marvuun.database.daos.*
+import me.marvuun.database.daos.location.City
+import me.marvuun.database.daos.location.Home
+import me.marvuun.database.daos.location.Site
+import me.marvuun.database.daos.location.getLocationFromUUID
 import me.marvuun.database.daos.resources.getResourceFromShort
 import me.marvuun.database.tables.*
+import me.marvuun.database.tables.locations.Cities
+import me.marvuun.database.tables.locations.Homes
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
+import kotlin.math.sqrt
 
 suspend fun GuildSlashCommandEvent<NoArgs>.startJourney() {
   val response = transaction {
@@ -20,6 +27,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.startJourney() {
       Player.new {
         userId = EntityID(author.id.value, Players)
         currentLocation = homeUUID
+        occupiedCoordinates = mutableListOf(mutableListOf(50, -25))
       }
 
       PlayerSite.new {
@@ -31,14 +39,19 @@ suspend fun GuildSlashCommandEvent<NoArgs>.startJourney() {
       }
 
       Home.new {
+        xCoordinate = 0
+        yCoordinate = 0
         homeId = EntityID(homeUUID, Homes)
         userId = author.id.value
       }
 
       City.new {
+        xCoordinate = 50
+        yCoordinate = -25
+        name = "Phanotesia"
         cityId = EntityID(UUID.randomUUID(), Cities)
         userId = author.id.value
-        travelTime = 300000
+        travelTime = (sqrt(xCoordinate.toDouble() * xCoordinate.toDouble() + yCoordinate.toDouble() * yCoordinate.toDouble()) * 10000).toInt()
         buyers = generateBuyers(author)
         purchasableItems = mutableMapOf()
       }
@@ -78,53 +91,60 @@ suspend fun GuildSlashCommandEvent<NoArgs>.getLocation() {
     }
     return
   }
+  val location = getLocationFromUUID(author.id.value, player.currentLocation!!)
 
-  if (player.currentLocation == getHome(author).homeId.value) {
-    val home = getHome(author)
+  when (location) {
+    is Home -> {
+      respond {
+        title = "You are currently at home."
 
-    respond {
-      title = "You are currently at home."
+        field {
+          inline = true
+          name = "Furnace"
+          value = "Level: ${location.furnaceLevel}"
+        }
 
-      field {
-        inline = true
-        name = "Furnace"
-        value = "Level: ${home.furnaceLevel}"
+        field {
+          inline = true
+          name = "Sawmill"
+          value = "Level: ${location.sawmillLevel}"
+        }
+
+        field {
+          inline = true
+          name = "Stone-Cutting Station"
+          value = "Level: ${location.stoneCutterLevel}"
+        }
       }
-
-      field {
-        inline = true
-        name = "Sawmill"
-        value = "Level: ${home.sawmillLevel}"
+      return
+    }
+    is City -> {
+      respond {
+        title = "You are currently in ${location.name}"
       }
+      return
+    }
+    is Site -> {
+      val totalResources = transaction { location.totalResources }
+      val currentResources = transaction { location.currentResources }
 
-      field {
-        inline = true
-        name = "Stone-Cutting Station"
-        value = "Level: ${home.stoneCutterLevel}"
+      respond {
+        title = "You are currently at a ${location.type.name.lowercase()}.\n"
+        description = "The number represents how many times you can gather the resource here."
+        footer {
+          text = "Hint: Use /gather to start gathering."
+        }
+        totalResources.forEach { (short, amount) ->
+          val resource = getResourceFromShort(short)
+          field {
+            name = resource.name.value
+            value = "${currentResources[resource.short]}/$amount"
+          }
+        }
       }
     }
-    return
   }
 
-
-  val site = getSite(author)
-  val totalResources = transaction { site.totalResources }
-  val currentResources = transaction { site.currentResources }
-
-  respond {
-    title = "You are currently at a ${site.type.name.lowercase()}.\n"
-    description = "The number represents how many times you can gather the resource here."
-    footer {
-      text = "Hint: Use /gather to start gathering."
-    }
-    totalResources.forEach { (short, amount) ->
-      val resource = getResourceFromShort(short)
-      field {
-        name = resource.name.value
-        value = "${currentResources[resource.short]}/$amount"
-      }
-    }
-  }
 }
 
 suspend fun GuildSlashCommandEvent<NoArgs>.printLevels() {

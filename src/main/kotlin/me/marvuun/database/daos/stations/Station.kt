@@ -1,6 +1,6 @@
 package me.marvuun.database.daos.stations
 
-import me.marvuun.database.daos.Home
+import me.marvuun.database.daos.location.Home
 import me.marvuun.database.daos.Inventory
 import me.marvuun.database.daos.resources.getResourceFromShort
 import me.marvuun.enums.StationTypes

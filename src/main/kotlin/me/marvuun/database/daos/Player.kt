@@ -20,7 +20,7 @@ class Player(id: EntityID<ULong>): Entity<ULong>(id) {
   var currentLocation by Players.currentLocation
   var currentlyMaking by Players.currentlyMaking.transformCurrentlyMakingMap()
   var destination by Players.destination
-
+  var occupiedCoordinates by Players.occupiedCoordinates.transformToList()
 }
 
 private fun Column<String>.transformCurrentlyMakingMap() =
@@ -31,3 +31,19 @@ private fun Column<String>.transformCurrentlyMakingMap() =
       stringToMap(it)
         .mapValues { entry ->  entry.value.toIntRange()  }
     })
+
+private fun Column<String>.transformToList() = transform(
+  {
+    it.map { entry -> entry.joinToString("$") }.toString()
+  },
+  {
+    it.removeSurrounding("[", "]")
+      .split(", ")
+      .map { entry ->
+        entry.removeSurrounding("[", "]")
+        .split("$")
+          .map { number -> number.toInt() }
+        .toMutableList()
+      }
+      .toMutableList()
+  })

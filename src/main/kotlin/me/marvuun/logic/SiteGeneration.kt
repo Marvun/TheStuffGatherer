@@ -6,6 +6,8 @@ import me.marvuun.database.tables.resources.RawResources
 import me.marvuun.enums.RarityTypes
 import me.marvuun.enums.ResourceCategories
 import me.marvuun.enums.SiteTypes
+import org.jetbrains.exposed.sql.transactions.transaction
+import kotlin.math.absoluteValue
 
 fun generateResources(rarityType: RarityTypes, siteType: SiteTypes, user: User): Map<String, Int> {
 
@@ -33,14 +35,37 @@ fun generateResources(rarityType: RarityTypes, siteType: SiteTypes, user: User):
   return map
 }
 
-fun generateTravelTime(rarity: RarityTypes) =
-  when (rarity) {
-    RarityTypes.S -> (5400000..7200000).random()
-    RarityTypes.A -> (3600000..5400000).random()
-    RarityTypes.B -> (2700000..3600000).random()
-    RarityTypes.C -> (1800000..2700000).random()
-    RarityTypes.D -> (900000..1800000).random()
+fun generateCoordinates(rarity: RarityTypes, user: User): MutableList<Int> {
+  val player = getPlayer(user)
+  val allCoordinates = mutableListOf<MutableList<Int>>()
+  val occupiedCoordinates = transaction { player.occupiedCoordinates }
+
+  for (i in -500..500) {
+    for (j in -500..500) {
+      allCoordinates.add(mutableListOf(i,j))
+    }
   }
+  println(allCoordinates.size)
+  println(occupiedCoordinates)
+
+  occupiedCoordinates.forEach {
+    println(it)
+    println(allCoordinates.remove(it))
+  }
+  println(allCoordinates.size)
+
+  val randomCoordinates = transaction {
+    when (rarity) {
+      RarityTypes.S -> allCoordinates.filter { it[0].absoluteValue >= 450 && it [1].absoluteValue >= 450 }.random()
+      RarityTypes.A -> allCoordinates.filter { it[0].absoluteValue in (350..450) && it [1].absoluteValue in (350..450) }.random()
+      RarityTypes.B -> allCoordinates.filter { it[0].absoluteValue in (250..350) && it [1].absoluteValue in (250..350) }.random()
+      RarityTypes.C -> allCoordinates.filter { it[0].absoluteValue in (150..250) && it [1].absoluteValue in (150..250) }.random()
+      RarityTypes.D -> allCoordinates.filter { it[0].absoluteValue in (50..150) && it [1].absoluteValue in (50..150) }.random()
+    }
+  }
+
+  return randomCoordinates
+}
 
 
 fun siteTypeToResourceCategories(siteType: SiteTypes): List<ResourceCategories> {

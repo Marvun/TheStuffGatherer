@@ -18,7 +18,7 @@ import dev.kord.x.emoji.Emojis
 import me.jakejmattson.discordkt.NoArgs
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.jakejmattson.discordkt.extensions.toPartialEmoji
-import me.marvuun.database.daos.Home
+import me.marvuun.database.daos.location.Home
 import me.marvuun.database.daos.Inventory
 import me.marvuun.database.daos.Player
 import me.marvuun.database.daos.activities.CurrentPlayerActivity
