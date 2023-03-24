@@ -1,10 +1,11 @@
 package me.marvuun.database.daos.resources
 
 import dev.kord.core.entity.User
+import me.marvuun.database.daos.Buyer.Companion.transform
 import me.marvuun.database.daos.Level
-import me.marvuun.database.daos.activities.CurrentStationUpgrade.Companion.transform
 import me.marvuun.database.tables.resources.*
 import me.marvuun.enums.ResourceCategories
+import me.marvuun.util.stringToMap
 import me.marvuun.util.toIntRange
 import me.marvuun.util.toMyString
 import org.jetbrains.exposed.dao.Entity
@@ -19,10 +20,12 @@ abstract class Resource<T : Comparable<T>>(id: EntityID<T>) : Entity<T>(id) {
 
   protected fun Column<String>.transformOutputAmount() =
     transform({
-      it.toMyString()
+      println(it.toString())
+      it.toString()
     },
       {
-        it.toIntRange()
+        stringToMap(it)
+          .mapValues { entry -> entry.value.toIntRange() }
       })
   fun getLevelForResourceCategory(user: User): Int {
     val levels = transaction { Level.findById(user.id.value)!! }

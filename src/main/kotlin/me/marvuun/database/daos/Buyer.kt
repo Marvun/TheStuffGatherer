@@ -208,7 +208,7 @@ fun generateBuyers(user: User) : MutableList<Buyer> {
         2 -> {
           val randomSellingInformation = SellingInformation.all().filter { !it.short.value.contains("raw_") }.random()
           val resource = getResourceFromShort(randomSellingInformation.short.value) as Recipe<*>
-          val amount = resource.outputAmount.random() * 3
+          val amount = resource.outputAmount[resource.short]!!.random() * 3
           specialRewardString = "${amount}x ${resource.name.value}"
         }
       }

@@ -172,7 +172,6 @@ suspend fun openTravelCategoryMenu(ci: ComponentInteraction, category: String) {
 suspend fun openTravelSiteMenu(ci: ComponentInteraction, selectedSiteType: String) {
   val sites = getSites(ci.user)
   val player = getPlayer(ci.user)
-  val home = getHome(ci.user)
   val guild = ci.message.getGuild()
   val site = transaction {
 
@@ -221,7 +220,6 @@ suspend fun openTravelSiteMenu(ci: ComponentInteraction, selectedSiteType: Strin
 
 suspend fun openTravelCityMenu(ci: ComponentInteraction, selectedCityName: String) {
   val player = getPlayer(ci.user)
-  val home = getHome(ci.user)
   val guild = ci.message.getGuild()
   val city = transaction {  City.find { Cities.name eq selectedCityName and (Cities.userId eq ci.user.id.value)}.first() }
   transaction {

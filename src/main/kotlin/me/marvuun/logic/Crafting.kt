@@ -130,11 +130,12 @@ suspend fun startCrafting(ci: ComponentInteraction, ingredients: MutableList<Res
   val startTime = System.currentTimeMillis()
 
   transaction {
+    resource.outputAmount.mapValues { entry -> entry.value * amount }
     player.activityStartTime = startTime
-    player.currentActivity = "Crafting ${resource.outputAmount.toMyString(amount, "-")}x ${resource.name.value}."
+    player.currentActivity = "Crafting ${resource.outputAmount[resource.short]!!.toMyString(amount, "-")}x ${resource.name.value}."
     player.currentActivityType = ActivityTypes.CRAFTING
     player.activityDuration = resource.craftingDuration * amount
-    player.currentlyMaking = mutableMapOf(resource.short to resource.outputAmount * amount)
+    player.currentlyMaking = resource.outputAmount
 
     CurrentPlayerActivity.new {
       this.guildId = guildId
@@ -165,7 +166,7 @@ suspend fun startCrafting(ci: ComponentInteraction, ingredients: MutableList<Res
   ci.updateEphemeralMessage {
     components = mutableListOf()
     embed {
-      title = "You started to craft ${resource.outputAmount.toMyString(amount, "-")}x ${resource.name.value}."
+      title = "You started to craft ${resource.outputAmount[resource.short]!!.toMyString(amount, "-")}x ${resource.name.value}."
       description = "It will take ${millisecondsToDuration(resource.craftingDuration * amount)}."
     }
   }
@@ -200,7 +201,7 @@ private fun buildCraftingMessage(ingredients: MutableList<Resource<String>?>, in
 
   return UpdateMessageInteractionResponseCreateBuilder().apply {
     embed {
-      title = "${resource.outputAmount.toMyString(amount, "-")}x ${resource.name.value}"
+      title = "${resource.outputAmount[resource.short]!!.toMyString(amount, "-")}x ${resource.name.value}"
       field {
         name = "Ingredients"
         value = "${
@@ -309,8 +310,10 @@ suspend fun finishCrafting(player: Player, user: User, channel: MessageChannel) 
       finalResources[short] = randomAmount
 
       val resource = getResourceFromShort(short)
-      val craftingTimes = amount.first / (resource as Recipe<*>).outputAmount.first
-      levels.addExperience(resource, craftingTimes, user, channel)
+      if (resource is Recipe<*>) {
+        val craftingTimes = amount.first / resource.outputAmount[resource.short]!!.first
+        levels.addExperience(resource, craftingTimes, user, channel)
+      }
      }
     player.currentlyMaking = mutableMapOf()
 

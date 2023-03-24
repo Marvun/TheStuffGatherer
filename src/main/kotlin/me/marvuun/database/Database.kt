@@ -152,7 +152,8 @@ fun createFurnaceRecipes() {
           requiredHeatLevel = it[5].toInt()
           neededResources = stringToMap(it[6])
             .mapValues { entry -> entry.value.toInt() }
-          outputAmount = it[7].toIntRange()
+          outputAmount = stringToMap(it[7])
+            .mapValues { entry -> entry.value.toIntRange() }
         }
       }
     }
@@ -198,7 +199,8 @@ fun createSawmillRecipes() {
           requiredLevel = it[4].toInt()
           neededResources = stringToMap(it[5])
             .mapValues { entry -> entry.value.toInt() }
-          outputAmount = it[6].toIntRange()
+          outputAmount = stringToMap(it[6])
+            .mapValues { entry -> entry.value.toIntRange() }
         }
       }
     }
@@ -244,7 +246,8 @@ fun createStoneCutterRecipes() {
           requiredLevel = it[4].toInt()
           neededResources = stringToMap(it[5])
             .mapValues { entry -> entry.value.toInt() }
-          outputAmount = it[6].toIntRange()
+          outputAmount = stringToMap(it[6])
+            .mapValues { entry -> entry.value.toIntRange() }
         }
       }
     }

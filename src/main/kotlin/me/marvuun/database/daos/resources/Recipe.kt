@@ -14,7 +14,7 @@ abstract class Recipe<T: Comparable<T>>(id: EntityID<String>): Resource<String>(
   abstract var craftingDuration: Long
   abstract var requiredLevel: Int
   abstract var neededResources: Map<String, Int>
-  abstract var outputAmount: IntRange
+  abstract var outputAmount: Map<String, IntRange>
 
   fun getMissingResources(inventory: List<Inventory>): String {
     var missingMaterials = ""
