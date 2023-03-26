@@ -45,5 +45,11 @@ fun characterCommands() = commands("Character") {
       openUpgradeMenu()
     }
   }
+  slash("quests", "Shows you all your current quests."){
+    execute {
+      isRegisteredPlayer() ?: return@execute
+      openPlayerQuestMenu(interaction!!, 0)
+    }
+  }
 }
 

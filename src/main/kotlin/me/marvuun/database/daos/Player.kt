@@ -1,6 +1,7 @@
 package me.marvuun.database.daos
 
 import me.marvuun.database.daos.activities.CurrentStationUpgrade.Companion.transform
+import me.marvuun.database.daos.location.transformQuests
 import me.marvuun.database.tables.Players
 import me.marvuun.util.stringToMap
 import me.marvuun.util.toIntRange
@@ -20,7 +21,9 @@ class Player(id: EntityID<ULong>): Entity<ULong>(id) {
   var currentLocation by Players.currentLocation
   var currentlyMaking by Players.currentlyMaking.transformCurrentlyMakingMap()
   var destination by Players.destination
-  var occupiedCoordinates by Players.occupiedCoordinates.transformToList()
+  var occupiedCoordinates by Players.occupiedCoordinates.transformCoordinates()
+  var quests by Players.quests.transformQuests()
+  var money by Players.money
 }
 
 private fun Column<String>.transformCurrentlyMakingMap() =
@@ -32,7 +35,7 @@ private fun Column<String>.transformCurrentlyMakingMap() =
         .mapValues { entry ->  entry.value.toIntRange()  }
     })
 
-private fun Column<String>.transformToList() = transform(
+private fun Column<String>.transformCoordinates() = transform(
   {
     it.map { entry -> entry.joinToString("$") }.toString()
   },
@@ -47,3 +50,4 @@ private fun Column<String>.transformToList() = transform(
       }
       .toMutableList()
   })
+

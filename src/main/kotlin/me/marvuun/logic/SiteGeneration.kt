@@ -35,24 +35,15 @@ fun generateResources(rarityType: RarityTypes, siteType: SiteTypes, user: User):
   return map
 }
 
-fun generateCoordinates(rarity: RarityTypes, user: User): MutableList<Int> {
-  val player = getPlayer(user)
+fun generateCoordinates(rarity: RarityTypes): MutableList<Int> {
+
   val allCoordinates = mutableListOf<MutableList<Int>>()
-  val occupiedCoordinates = transaction { player.occupiedCoordinates }
 
   for (i in -500..500) {
     for (j in -500..500) {
       allCoordinates.add(mutableListOf(i,j))
     }
   }
-  println(allCoordinates.size)
-  println(occupiedCoordinates)
-
-  occupiedCoordinates.forEach {
-    println(it)
-    println(allCoordinates.remove(it))
-  }
-  println(allCoordinates.size)
 
   val randomCoordinates = transaction {
     when (rarity) {

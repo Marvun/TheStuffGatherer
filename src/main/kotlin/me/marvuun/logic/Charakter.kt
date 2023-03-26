@@ -1,21 +1,36 @@
 package me.marvuun.logic
 
+import dev.kord.common.entity.ButtonStyle
+import dev.kord.core.behavior.interaction.*
+import dev.kord.core.entity.User
+import dev.kord.core.entity.application.ApplicationCommand
+import dev.kord.core.entity.interaction.*
+import dev.kord.rest.builder.message.create.actionRow
+import dev.kord.rest.builder.message.create.embed
+import dev.kord.x.emoji.Emojis
 import me.jakejmattson.discordkt.NoArgs
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
+import me.jakejmattson.discordkt.extensions.toPartialEmoji
 import me.marvuun.conversations.abandonSiteConversation
 import me.marvuun.database.daos.*
-import me.marvuun.database.daos.location.City
-import me.marvuun.database.daos.location.Home
-import me.marvuun.database.daos.location.Site
-import me.marvuun.database.daos.location.getLocationFromUUID
+import me.marvuun.database.daos.location.*
+import me.marvuun.database.daos.resources.Blueprint
+import me.marvuun.database.daos.resources.getResourceFromName
 import me.marvuun.database.daos.resources.getResourceFromShort
+import me.marvuun.database.daos.resources.getResourcesDisplayName
 import me.marvuun.database.tables.*
 import me.marvuun.database.tables.locations.Cities
 import me.marvuun.database.tables.locations.Homes
+import me.marvuun.database.tables.resources.Blueprints
+import me.marvuun.enums.RarityTypes
+import me.marvuun.util.checkUser
+import me.marvuun.util.millisecondsToDuration
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 import kotlin.math.sqrt
+
+private var commandInvoker: User? = null
 
 suspend fun GuildSlashCommandEvent<NoArgs>.startJourney() {
   val response = transaction {
@@ -45,22 +60,25 @@ suspend fun GuildSlashCommandEvent<NoArgs>.startJourney() {
         userId = author.id.value
       }
 
-      City.new {
+      val city = City.new {
         xCoordinate = 50
         yCoordinate = -25
         name = "Phanotesia"
         cityId = EntityID(UUID.randomUUID(), Cities)
         userId = author.id.value
         travelTime = (sqrt(xCoordinate.toDouble() * xCoordinate.toDouble() + yCoordinate.toDouble() * yCoordinate.toDouble()) * 10000).toInt()
-        buyers = generateBuyers(author)
-        purchasableItems = mutableMapOf()
+        quests = mutableListOf()
+        purchasableItems = generatePurchasableItems()
       }
+      city.quests = generateQuests(author, city)
 
       "You started your journey!"
     } else "You already started your journey!"
   }
-  respond {
-    title = response
+  interaction!!.respondPublic {
+    embed {
+      title = response
+    }
   }
 }
 
@@ -112,16 +130,14 @@ suspend fun GuildSlashCommandEvent<NoArgs>.getLocation() {
 
         field {
           inline = true
-          name = "Stone-Cutting Station"
+          name = "Stone Cutter"
           value = "Level: ${location.stoneCutterLevel}"
         }
       }
       return
     }
     is City -> {
-      respond {
-        title = "You are currently in ${location.name}"
-      }
+      openCityMenu(location)
       return
     }
     is Site -> {
@@ -229,3 +245,181 @@ suspend fun GuildSlashCommandEvent<NoArgs>.abandonSite() =
   abandonSiteConversation().startSlashResponse(discord, author, this)
 
 
+suspend fun openPlayerQuestMenu(ci: ActionInteraction, page: Int) {
+  commandInvoker = ci.user
+  val menu = buildPlayerQuestMenu(ci)
+
+  if (ci is ComponentInteraction)
+    menu.defaultPageIndex = (ci.message.embeds[0].title!!.split(" ").last().toIntOrNull() ?: 1) - 1
+  else
+    menu.defaultPageIndex = 0
+
+  menu.navigate(page)
+  if (ci is GuildApplicationCommandInteraction)
+    ci.respondPublic(menu.getPage())
+  else {
+    ci as ComponentInteraction
+    ci.updatePublicMessage(menu.getPage())
+  }
+
+
+}
+private suspend fun buildPlayerQuestMenu(ci: ActionInteraction): MyMenu  {
+  val player = getPlayer(ci.user)
+  val inventory = getInventory(ci.user)
+
+  return myMenu {
+    if (player.quests.isEmpty())
+      page {
+        embed {
+          title = "You don't have any quests right now."
+          description = "Travel to a city and check the local quests."
+        }
+      }
+    else {
+      player.quests.forEachIndexed { index, quest ->
+        var canBeFinished = transaction { player.currentLocation == quest.city.cityId.value }
+        if (canBeFinished) checkIfBusy(ci)
+        val resourceStrings = mutableListOf<String>()
+
+        quest.wantedItems.forEach { (short, amount) ->
+          val invEntry = transaction { inventory.find { it.itemId == short } }
+          if (invEntry == null) {
+            canBeFinished = false
+            resourceStrings.add("${getResourceFromShort(short).name.value}: 0/$amount")
+          } else
+            resourceStrings.add("${getResourceFromShort(short).name.value}: ${invEntry.amount}/$amount")
+        }
+
+        page {
+          embed {
+            title = "Quest ${index + 1}"
+
+            footer {
+              text = "Page: ${index + 1}/${player.quests.size}"
+            }
+
+            field {
+              name = "Needed Resources:"
+              value = resourceStrings.joinToString("\n")
+            }
+
+            field {
+              name = "Reward:"
+              value = "${quest.money} Coins"
+            }
+
+            if (quest.timeLimit != null) {
+
+              if (quest.timeLimit!! < System.currentTimeMillis()) {
+                field {
+                  name = "~~Special Rewards:~~"
+                  value = "~~${quest.specialRewards}~~"
+                }
+
+                field {
+                  name = "~~Time Limit:~~"
+                  value = if (quest.timeLimit!! - System.currentTimeMillis() > 0) "~~${millisecondsToDuration(quest.timeLimit!! - System.currentTimeMillis())}~~" else "~~0s~~"
+                }
+              }
+              else {
+                field {
+                  name = "Special Rewards:"
+                  value = quest.specialRewards
+                }
+
+                field {
+                  name = "Time Limit:"
+                  value = millisecondsToDuration(quest.timeLimit!! - System.currentTimeMillis())
+                }
+              }
+            }
+
+            field {
+              name = "City:"
+              value = transaction { quest.city.name }
+            }
+          }
+          actionRow {
+            interactionButton(ButtonStyle.Secondary, "previousPlayerQuestPage") {
+              emoji = Emojis.arrowLeft.toPartialEmoji()
+              label = "Left"
+            }
+            interactionButton(ButtonStyle.Secondary, "finishQuest") {
+              disabled = !canBeFinished
+              emoji = Emojis.whiteCheckMark.toPartialEmoji()
+              label = "Finish"
+            }
+            interactionButton(ButtonStyle.Secondary, "nextPlayerQuestPage") {
+              emoji = Emojis.arrowRight.toPartialEmoji()
+              label = "Right"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+suspend fun finishQuest(ci: ComponentInteraction) {
+  if (!checkUser(ci, commandInvoker!!)) return
+
+  transaction {
+
+    val player = getPlayer(ci.user)
+    val inventory = getInventory(ci.user)
+    val quest = Quest.find { Quests.id eq player.quests[ci.message.embeds[0].title!!.split(" ").last().toInt() - 1].id }.first()
+
+      quest.wantedItems.forEach { (short, amount) ->
+        val invEntry = inventory.find { it.itemId == short }!!
+        invEntry.amount -= amount
+      }
+      player.money += quest.money
+
+      if (quest.timeLimit != null && quest.timeLimit!! >= System.currentTimeMillis()) {
+
+        when {
+          quest.specialRewards.contains("Site") -> {
+            generateSites(getPlayer(ci.user), ci.user, 1, RarityTypes.S)
+          }
+
+          else -> {
+            val itemShort: String
+            val amount: Int
+
+            if (quest.specialRewards.contains("S-Tier")) {
+
+              val blueprint = Blueprint.find { Blueprints.id eq quest.specialRewards.slice(3..quest.specialRewards.length) }.first()
+              itemShort = blueprint.short
+              amount = 1
+
+            } else {
+
+              val regex = Regex("\\d+x ")
+              val resource = getResourceFromName(quest.specialRewards.replace(regex, ""))
+
+              itemShort = (resource.short)
+              amount = regex.find(quest.specialRewards)!!.value.removeSuffix("x ").toInt()
+            }
+
+            val invEntry = inventory.find { it.itemId == itemShort }
+
+            if (invEntry != null)
+              invEntry.amount += amount
+            else
+              Inventory.new {
+                userId = ci.user.id.value
+                itemId = itemShort
+                this.amount = amount
+              }
+          }
+        }
+      }
+
+      val quests = player.quests
+      quests.remove(quest)
+      player.quests = quests
+      quest.delete()
+
+  }
+}

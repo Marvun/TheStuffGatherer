@@ -1,13 +1,12 @@
 package me.marvuun.database.daos.resources
 
 import dev.kord.core.entity.User
-import me.marvuun.database.daos.Buyer.Companion.transform
+import me.marvuun.database.daos.Quest.Companion.transform
 import me.marvuun.database.daos.Level
 import me.marvuun.database.tables.resources.*
 import me.marvuun.enums.ResourceCategories
 import me.marvuun.util.stringToMap
 import me.marvuun.util.toIntRange
-import me.marvuun.util.toMyString
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Column
@@ -42,7 +41,7 @@ abstract class Resource<T : Comparable<T>>(id: EntityID<T>) : Entity<T>(id) {
       ResourceCategories.NUGGET, ResourceCategories.INGOT -> levels.meltingLevel
       ResourceCategories.PLANK -> levels.sawingLevel
       ResourceCategories.STONE_BLOCK -> levels.stoneCuttingLevel
-
+      ResourceCategories.BLUEPRINT -> throw Exception("Something went wrong. A Blueprint should never require a level.")
     }
 
   }
@@ -58,6 +57,21 @@ fun getResourceFromShort(short: String) =
       else -> RawResource.find { RawResources.short eq short }.first()
     }
 
+  }
+
+fun getResourceFromName(name: String) =
+  transaction {
+    var resource: Resource<*>?
+    resource = FurnaceRecipe.find { FurnaceRecipes.id eq name }.firstOrNull()
+    if (resource == null)
+      resource = SawmillRecipe.find { SawmillRecipes.id eq name }.firstOrNull()
+    if (resource == null)
+      resource = StoneCutterRecipe.find { StoneCutterRecipes.id eq name }.firstOrNull()
+    if (resource == null)
+      resource = FuelResource.find { FuelResources.id eq name }.firstOrNull()
+    if (resource == null)
+      RawResource.find { RawResources.short eq name }.firstOrNull()
+    resource!!
   }
 
 fun getResourcesDisplayName(resources: Map<String, Int>, delimiter: String, multiplier: Int = 1): String {

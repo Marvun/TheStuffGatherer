@@ -14,6 +14,7 @@ import me.marvuun.database.tables.locations.Cities
 import me.marvuun.database.tables.locations.Homes
 import me.marvuun.database.tables.locations.Sites
 import me.marvuun.database.tables.resources.*
+import me.marvuun.enums.RarityTypes
 import me.marvuun.enums.ResourceCategories
 import me.marvuun.enums.SiteTypes
 import me.marvuun.util.stringToMap
@@ -50,8 +51,9 @@ object Database {
         Sawmills,
         StoneCutters,
         Cities,
-        Buyers,
-        SellingInformations
+        Quests,
+        SellingInformations,
+        Blueprints
       )
       createSellingInformation()
       createRawResources()
@@ -62,6 +64,7 @@ object Database {
       createSawmillLevels()
       createStoneCutterRecipes()
       createStoneCutterLevels()
+      createBlueprints()
     }
 
   }
@@ -269,6 +272,29 @@ fun createStoneCutterLevels() {
           neededResources = stringToMap(it[1])
             .mapValues { entry -> entry.value.toInt() }
           requiredLevel = it[2].toInt()
+        }
+
+    }
+  }
+}
+
+fun createBlueprints() {
+
+  val csvFile = Database.Companion::class.java.classLoader.getResourceAsStream("blueprints.csv")!!
+
+  csvReader().open(csvFile) {
+
+    readAllAsSequence().forEach {
+
+      if (it[0] != "name" && Blueprint.findById(it[0]) == null)
+
+        Blueprint.new {
+          name = EntityID(it[0], Blueprints)
+          short = it[1]
+          type = ResourceCategories.BLUEPRINT
+          rarity = RarityTypes.getFromString(it[2])
+          obtainableFrom = it[3].split(", ")
+          price = it[4].toIntOrNull()
         }
 
     }

@@ -7,6 +7,7 @@ import me.jakejmattson.discordkt.dsl.bot
 import me.marvuun.database.Database
 import me.marvuun.threads.createCurrentActivityCheckingThread
 import me.marvuun.threads.createCurrentStationUpgradesCheckingThread
+import me.marvuun.threads.questUpdaterThread
 import java.util.*
 
 
@@ -21,6 +22,7 @@ fun main() {
     onStart {
       createCurrentActivityCheckingThread()
       createCurrentStationUpgradesCheckingThread()
+      questUpdaterThread()
     }
   }
 }

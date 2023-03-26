@@ -3,10 +3,7 @@ package me.marvuun.logic
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.common.entity.TextInputStyle
 import dev.kord.core.behavior.channel.createMessage
-import dev.kord.core.behavior.interaction.ComponentInteractionBehavior
-import dev.kord.core.behavior.interaction.modal
-import dev.kord.core.behavior.interaction.respondEphemeral
-import dev.kord.core.behavior.interaction.updateEphemeralMessage
+import dev.kord.core.behavior.interaction.*
 import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.MessageChannel
 import dev.kord.core.entity.interaction.ActionInteraction
@@ -28,6 +25,7 @@ import me.marvuun.database.tables.Inventories
 import me.marvuun.enums.ActivityTypes
 import me.marvuun.enums.StationTypes
 import me.marvuun.enums.getStationTypeFromResource
+import me.marvuun.util.checkUser
 import me.marvuun.util.millisecondsToDuration
 import me.marvuun.util.times
 import me.marvuun.util.toMyString
@@ -35,8 +33,10 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 
-suspend fun GuildSlashCommandEvent<NoArgs>.openCraftingMenu() {
+private var commandInvoker: User? = null
 
+suspend fun GuildSlashCommandEvent<NoArgs>.openCraftingMenu() {
+  commandInvoker = author
   val home = getHome(author)
 
   if (home.furnaceLevel == 0 && home.sawmillLevel == 0 && home.stoneCutterLevel == 0)
@@ -46,7 +46,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.openCraftingMenu() {
       }
     }
   else
-    interaction!!.respondEphemeral {
+    interaction!!.respondPublic {
       embed {
         title = "At which station do you want to craft?"
       }
@@ -70,11 +70,12 @@ suspend fun GuildSlashCommandEvent<NoArgs>.openCraftingMenu() {
 }
 
 suspend fun openCraftingMenu(ci: ComponentInteraction, stationType: StationTypes) {
+  if(!checkUser(ci, commandInvoker!!)) return
   val home = getHome(ci.user)
   val inventory = transaction { getInventory(ci.user).toList() }
 
   val availableRecipes = getAvailableRecipes(null, stationType, home)
-  ci.updateEphemeralMessage {
+  ci.updatePublicMessage {
     embed {
       title = "${stationType.getDisplayName()} Level ${getNextStation(stationType, home)!!.level.value - 1}"
       description = "Select what you want to craft!"
@@ -94,7 +95,7 @@ suspend fun openCraftingMenu(ci: ComponentInteraction, stationType: StationTypes
 
 
 suspend fun askForAmount(ci: ComponentInteraction, ingredients: MutableList<Resource<String>?>): Int {
-
+  if(!checkUser(ci, commandInvoker!!)) return 1
   val inventory = transaction { getInventory(ci.user).toList() }
   val resource = ingredients[0] as Recipe<*>
   val fuel = ingredients[1] as FuelResource?
@@ -122,6 +123,7 @@ suspend fun askForAmount(ci: ComponentInteraction, ingredients: MutableList<Reso
 }
 
 suspend fun startCrafting(ci: ComponentInteraction, ingredients: MutableList<Resource<String>?>, amount: Int) {
+  if(!checkUser(ci, commandInvoker!!)) return
   val player = getPlayer(ci.user)
   val inventory = transaction { getInventory(ci.user).toList() }
   val resource = ingredients[0] as Recipe<*>
@@ -161,9 +163,7 @@ suspend fun startCrafting(ci: ComponentInteraction, ingredients: MutableList<Res
 
   }
 
-
-
-  ci.updateEphemeralMessage {
+  ci.updatePublicMessage {
     components = mutableListOf()
     embed {
       title = "You started to craft ${resource.outputAmount[resource.short]!!.toMyString(amount, "-")}x ${resource.name.value}."
@@ -174,12 +174,13 @@ suspend fun startCrafting(ci: ComponentInteraction, ingredients: MutableList<Res
 }
 
 suspend fun updateCraftingMenu(ingredients: MutableList<Resource<String>?>, ci: ActionInteraction, amount: Int = 1, validAmount: Boolean = true, needsHeat: Boolean = false) {
+  if(!checkUser(ci, commandInvoker!!)) return
   val home = getHome(ci.user)
   val inventory = transaction { getInventory(ci.user).toList() }
   val message = buildCraftingMessage(ingredients, inventory, home, amount, validAmount, needsHeat)
 
   if (ci is ComponentInteractionBehavior) {
-    ci.updateEphemeralMessage {
+    ci.updatePublicMessage {
       embeds = message.embeds
       components = message.components
     }

@@ -1,0 +1,26 @@
+name,short,rarity,obtainableFrom,price
+S-Tier Onsoy Pickaxe,pick_on_s,S,"[specialrewards]",null
+A-Tier Onsoy Pickaxe,pick_on_a,A,"[Phanotesia]",50000
+B-Tier Onsoy Pickaxe,pick_on_b,B,"[Phanotesia]",35000
+C-Tier Onsoy Pickaxe,pick_on_c,C,"[Phanotesia]",20000
+D-Tier Onsoy Pickaxe,pick_on_d,D,"[Phanotesia]",10000
+S-Tier Onsoy Axe,axe_on_s,S,"[specialrewards]",null
+A-Tier Onsoy Axe,axe_on_a,A,"[Phanotesia]",50000
+B-Tier Onsoy Axe,axe_on_b,B,"[Phanotesia]",35000
+C-Tier Onsoy Axe,axe_on_c,C,"[Phanotesia]",20000
+D-Tier Onsoy Axe,axe_on_d,D,"[Phanotesia]",10000
+S-Tier Onsoy Shovel,sho_on_s,S,"[specialrewards]",null
+A-Tier Onsoy Shovel,sho_on_a,A,"[Phanotesia]",50000
+B-Tier Onsoy Shovel,sho_on_b,B,"[Phanotesia]",35000
+C-Tier Onsoy Shovel,sho_on_c,C,"[Phanotesia]",20000
+D-Tier Onsoy Shovel,sho_on_d,D,"[Phanotesia]",10000
+S-Tier Onsoy Billhook,bil_on_s,S,"[specialrewards]",null
+A-Tier Onsoy Billhook,bil_on_a,A,"[Phanotesia]",50000
+B-Tier Onsoy Billhook,bil_on_b,B,"[Phanotesia]",35000
+C-Tier Onsoy Billhook,bil_on_c,C,"[Phanotesia]",20000
+D-Tier Onsoy Billhook,bil_on_d,D,"[Phanotesia]",10000
+S-Tier Redar Fishing Rod,firo_red_s,S,"[specialrewards]",null
+A-Tier Redar Fishing Rod,firo_red_a,A,"[Phanotesia]",50000
+B-Tier Redar Fishing Rod,firo_red_b,B,"[Phanotesia]",35000
+C-Tier Redar Fishing Rod,firo_red_c,C,"[Phanotesia]",20000
+D-Tier Redar Fishing Rod,firo_red_d,D,"[Phanotesia]",10000

@@ -3,7 +3,9 @@ package me.marvuun.logic
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.core.behavior.channel.createMessage
 import dev.kord.core.behavior.edit
+import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.respondPublic
+import dev.kord.core.behavior.interaction.updatePublicMessage
 import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.MessageChannel
 import dev.kord.core.entity.interaction.ComponentInteraction
@@ -21,10 +23,14 @@ import me.marvuun.database.daos.resources.getResourceFromShort
 import me.marvuun.database.daos.stations.Station
 import me.marvuun.database.daos.stations.getNextStation
 import me.marvuun.enums.StationTypes
+import me.marvuun.util.checkUser
 import me.marvuun.util.millisecondsToDuration
 import org.jetbrains.exposed.sql.transactions.transaction
 
+private var commandInvoker: User? = null
+
 suspend fun GuildSlashCommandEvent<NoArgs>.openUpgradeMenu() {
+  commandInvoker = author
   interaction!!.respondPublic {
     actionRow {
       interactionButton(ButtonStyle.Secondary, "homeButton") {
@@ -47,10 +53,11 @@ suspend fun GuildSlashCommandEvent<NoArgs>.openUpgradeMenu() {
 }
 
 suspend fun openHomeUpgradeMenu(ci: ComponentInteraction) {
+  if(!checkUser(ci, commandInvoker!!)) return
   val home = getHome(ci.user)
   val currentStationUpgrade = home.upgradingStation
   if (currentStationUpgrade != null)
-    ci.message.edit {
+    ci.updatePublicMessage {
     components = mutableListOf()
       embed {
         title = "You are currently upgrading your ${currentStationUpgrade.getDisplayName()}."
@@ -58,7 +65,7 @@ suspend fun openHomeUpgradeMenu(ci: ComponentInteraction) {
       }
     }
   else
-    ci.message.edit {
+    ci.updatePublicMessage {
       embed {
         title = "Home Upgrades"
         description = "Select what you want to upgrade at your home."
@@ -83,7 +90,7 @@ suspend fun openStationUpgrade(
   station: StationTypes,
   ci: ComponentInteraction
 ): StationTypes? {
-
+  if(!checkUser(ci, commandInvoker!!)) return null
   val home = getHome(ci.user)
   val inventory = transaction { getInventory(ci.user).toList() }
   val levels = getLevels(ci.user)
@@ -112,7 +119,7 @@ suspend fun openStationUpgrade(
     }
 
 
-  ci.message.edit {
+  ci.updatePublicMessage {
     components = mutableListOf()
     embed {
       title = "Next ${station.getDisplayName()} Level: ${nextStation.id}"
@@ -199,7 +206,8 @@ fun buildStationUpgradeEmbedFields(
 }
 
 suspend fun cancelStationUpgrade(ci: ComponentInteraction, station: StationTypes?) {
-  ci.message.edit {
+  if(!checkUser(ci, commandInvoker!!)) return
+  ci.updatePublicMessage {
     components = mutableListOf()
     embed {
       title = "You chose not to upgrade your ${station!!.getDisplayName()}."
@@ -208,11 +216,12 @@ suspend fun cancelStationUpgrade(ci: ComponentInteraction, station: StationTypes
 }
 
 suspend fun performStationUpgrade(ci: ComponentInteraction, station: StationTypes?) {
+  if(!checkUser(ci, commandInvoker!!)) return
   val home = getHome(ci.user)
   val inventory = transaction { getInventory(ci.user).toList() }
   val nextStationLevel = getNextStation(station!!, home)
   val guildId = ci.message.getGuild().id.value
-  ci.message.edit {
+  ci.updatePublicMessage {
     components = mutableListOf()
     embed {
       title = "You started to upgrade your ${station.getDisplayName()}."

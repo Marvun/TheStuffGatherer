@@ -207,7 +207,7 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
             exp = (exp * 1.5).toInt()
             currentStoneCuttingExp += exp
           }
-
+          ResourceCategories.BLUEPRINT -> throw Exception("Something went wrong. A Blueprint should use experience.")
 
         }
       currentGatheringExp += exp

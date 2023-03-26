@@ -2,10 +2,14 @@ package me.marvuun.logic
 
 import dev.kord.core.behavior.channel.createMessage
 import dev.kord.core.behavior.interaction.respondEphemeral
+import dev.kord.core.behavior.interaction.respondPublic
 import dev.kord.core.behavior.interaction.updateEphemeralMessage
+import dev.kord.core.behavior.interaction.updatePublicMessage
 import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.MessageChannel
+import dev.kord.core.entity.interaction.ActionInteraction
 import dev.kord.core.entity.interaction.ComponentInteraction
+import dev.kord.core.entity.interaction.GuildApplicationCommandInteraction
 import dev.kord.rest.builder.message.create.actionRow
 import dev.kord.rest.builder.message.create.embed
 import me.jakejmattson.discordkt.Args1
@@ -24,6 +28,7 @@ import me.marvuun.database.tables.locations.Sites
 import me.marvuun.enums.ActivityTypes
 import me.marvuun.enums.RarityTypes
 import me.marvuun.enums.SiteTypes
+import me.marvuun.util.checkUser
 import me.marvuun.util.millisecondsToDuration
 import me.marvuun.util.minutesToDuration
 import org.jetbrains.exposed.dao.id.EntityID
@@ -33,11 +38,12 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 import kotlin.math.sqrt
 
+private var commandInvoker: User? = null
 suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
 
   val player = getPlayer(author)
 
-  checkIfBusy() ?: return
+  checkIfBusy(interaction!!) ?: return
 
   if (args.first <= 0) {
     respond {
@@ -67,12 +73,13 @@ suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
 }
 
 suspend fun GuildSlashCommandEvent<NoArgs>.openTravelMenu() {
+  commandInvoker = author
   val player = getPlayer(author)
   val sites = getSites(author)
 
-  checkIfBusy() ?: return
+  checkIfBusy(interaction!!) ?: return
 
-  interaction!!.respondEphemeral {
+  interaction!!.respondPublic {
     embed {
       title = "Where do you want to travel?"
     }
@@ -99,6 +106,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.openTravelMenu() {
 }
 
 suspend fun openTravelCategoryMenu(ci: ComponentInteraction, category: String) {
+  if(!checkUser(ci, commandInvoker!!)) return
   val home = getHome(ci.user)
   val player = getPlayer(ci.user)
   val sites = getSites(ci.user)
@@ -125,7 +133,7 @@ suspend fun openTravelCategoryMenu(ci: ComponentInteraction, category: String) {
 
         home.travelTime = 0
       }
-      ci.updateEphemeralMessage {
+      ci.updatePublicMessage {
         components = mutableListOf()
         embed {
           title = "You will now travel ${millisecondsToDuration(player.activityDuration)} to your home."
@@ -133,7 +141,7 @@ suspend fun openTravelCategoryMenu(ci: ComponentInteraction, category: String) {
       }
     }
     "sites" -> {
-      ci.updateEphemeralMessage {
+      ci.updatePublicMessage {
         embed {
           title = "To what kind of site do you want to travel?"
         }
@@ -149,7 +157,7 @@ suspend fun openTravelCategoryMenu(ci: ComponentInteraction, category: String) {
       }
     }
     "cities" -> {
-      ci.updateEphemeralMessage {
+      ci.updatePublicMessage {
         embed {
           title = "To which city do you want to travel?"
         }
@@ -170,6 +178,7 @@ suspend fun openTravelCategoryMenu(ci: ComponentInteraction, category: String) {
 }
 
 suspend fun openTravelSiteMenu(ci: ComponentInteraction, selectedSiteType: String) {
+  if(!checkUser(ci, commandInvoker!!)) return
   val sites = getSites(ci.user)
   val player = getPlayer(ci.user)
   val guild = ci.message.getGuild()
@@ -199,7 +208,7 @@ suspend fun openTravelSiteMenu(ci: ComponentInteraction, selectedSiteType: Strin
         activityEnd = startTime + site.travelTime.toLong()
       }
     }
-    ci.updateEphemeralMessage {
+    ci.updatePublicMessage {
     components = mutableListOf()
       embed {
         title = "You will now travel ${millisecondsToDuration(site.travelTime.toLong())} to the ${site.type.name.lowercase()}."
@@ -207,7 +216,7 @@ suspend fun openTravelSiteMenu(ci: ComponentInteraction, selectedSiteType: Strin
     }
 
   } else {
-    ci.updateEphemeralMessage {
+    ci.updatePublicMessage {
       components = mutableListOf()
       embed {
         title = "You already are at your current ${site.type.name.lowercase()} and therefore won't travel now."
@@ -219,6 +228,7 @@ suspend fun openTravelSiteMenu(ci: ComponentInteraction, selectedSiteType: Strin
 }
 
 suspend fun openTravelCityMenu(ci: ComponentInteraction, selectedCityName: String) {
+  if(!checkUser(ci, commandInvoker!!)) return
   val player = getPlayer(ci.user)
   val guild = ci.message.getGuild()
   val city = transaction {  City.find { Cities.name eq selectedCityName and (Cities.userId eq ci.user.id.value)}.first() }
@@ -239,7 +249,7 @@ suspend fun openTravelCityMenu(ci: ComponentInteraction, selectedCityName: Strin
       activityEnd = startTime + city.travelTime.toLong()
     }
   }
-  ci.updateEphemeralMessage {
+  ci.updatePublicMessage {
     components = mutableListOf()
     embed {
       title = "You will now travel ${millisecondsToDuration(city.travelTime.toLong())} to ${city.name}."
@@ -393,13 +403,13 @@ suspend fun GuildSlashCommandEvent<NoArgs>.getActivity() {
 suspend fun GuildSlashCommandEvent<NoArgs>.startGathering() =
   gatherConversation().startSlashResponse(discord, author, this)
 
-suspend fun GuildSlashCommandEvent<*>.checkIfBusy(): Unit? {
+suspend fun checkIfBusy(interaction: ActionInteraction): Unit? {
 
-  val player = getPlayer(author)
+  val player = getPlayer(interaction.user)
   val busy = transaction { player.currentActivityType } != null
 
   return if (busy) {
-    interaction!!.respondEphemeral {
+    interaction.respondPublic {
       embed {
         title = "You are currently busy. You are ${player.currentActivityType!!.name.lowercase()}."
       }
@@ -454,7 +464,7 @@ fun generateSites(player: Player, user: User, amount: Int? = null, rarity: Rarit
 
       transaction {
         val resources = generateResources(rarityType, siteType, user)
-        val coordinates = generateCoordinates(rarityType, user)
+        val coordinates = generateCoordinates(rarityType)
         val occupiedCoordinates = player.occupiedCoordinates
         occupiedCoordinates.add(coordinates)
         player.occupiedCoordinates = occupiedCoordinates

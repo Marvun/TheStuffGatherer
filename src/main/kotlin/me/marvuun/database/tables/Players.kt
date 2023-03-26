@@ -18,4 +18,6 @@ object Players : IdTable<ULong>() {
   val currentlyMaking = varchar("currently_making", 255).default("")
   val destination = uuid("destination").nullable()
   val occupiedCoordinates = mediumText("occupied_coordinates")
+  val quests = varchar("quests", 1023).default("")
+  val money = long("money").default(0L)
 }

@@ -1,10 +1,13 @@
 package me.marvuun.database.daos
 
 import dev.kord.core.entity.User
+import me.marvuun.database.daos.location.City
 import me.marvuun.database.daos.location.transformResources
+import me.marvuun.database.daos.resources.Blueprint
 import me.marvuun.database.daos.resources.Recipe
 import me.marvuun.database.daos.resources.getResourceFromShort
-import me.marvuun.database.tables.Buyers
+import me.marvuun.database.tables.Quests
+import me.marvuun.database.tables.resources.Blueprints
 import me.marvuun.enums.RarityTypes
 import me.marvuun.logic.generateSites
 import me.marvuun.logic.getPlayer
@@ -15,18 +18,19 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.*
 
-class Buyer(id: EntityID<UUID>) : Entity<UUID>(id) {
-  companion object : EntityClass<UUID, Buyer>(Buyers)
+class Quest(id: EntityID<UUID>) : Entity<UUID>(id) {
+  companion object : EntityClass<UUID, Quest>(Quests)
 
-  var buyerId by Buyers.id
-  var sellableItems by Buyers.sellableItems.transformResources()
-  var money by Buyers.money
-  var specialRewards by Buyers.specialRewards
-  var timeLimit by Buyers.timeLimit
+  var questId by Quests.id
+  var wantedItems by Quests.wantedItems.transformResources()
+  var money by Quests.money
+  var specialRewards by Quests.specialRewards
+  var timeLimit by Quests.timeLimit
+  var city by City referencedOn Quests.city
 }
 
-fun generateBuyers(user: User) : MutableList<Buyer> {
-  val buyerList = mutableListOf<Buyer>()
+fun generateQuests(user: User, city: City) : MutableList<Quest> {
+  val questList = mutableListOf<Quest>()
   repeat(5) { _ ->
 
     val sellableItemMap = mutableMapOf<String, Int>()
@@ -174,35 +178,25 @@ fun generateBuyers(user: User) : MutableList<Buyer> {
       }
     }
 
-    println("Count: $resourceCount")
     repeat(resourceCount) { _ ->
-      println("AMulti: $amountMultiplier")
-      println("MMulti: $moneyMultiplier")
-      println("special: $hasSpecialRewards")
       val randomResource = SellingInformation.all().filter {
         val resource = getResourceFromShort(it.short.value)
         val level = resource.getLevelForResourceCategory(user)
         it.unlockedAtLevel <= level
       }.random()
       val short = randomResource.short.value
-      println("Short: $short")
-      println("baseAmount: ${randomResource.baseAmount}")
-      println("amount: ${(randomResource.baseAmount * amountMultiplier).toInt()}")
 
       if (sellableItemMap[short] == null)
         sellableItemMap[short] = (randomResource.baseAmount * amountMultiplier).toInt()
       else
         sellableItemMap[short] = (sellableItemMap[short]!! + randomResource.baseAmount * amountMultiplier).toInt()
-      println("basePrice: ${randomResource.basePrice}")
-      println("price: ${((randomResource.baseAmount * amountMultiplier).toInt() * randomResource.basePrice * moneyMultiplier).toInt()}")
       money += ((randomResource.baseAmount * amountMultiplier).toInt() * randomResource.basePrice * moneyMultiplier).toInt()
-      println("Money: $money")
+
     }
 
     if (hasSpecialRewards){
-      when ((1..2).random()) {
+      when ((1..3).random()) {
         1 -> {
-          generateSites(getPlayer(user), user, 1, RarityTypes.S)
           specialRewardString = "1x S-Site"
         }
         2 -> {
@@ -211,18 +205,23 @@ fun generateBuyers(user: User) : MutableList<Buyer> {
           val amount = resource.outputAmount[resource.short]!!.random() * 3
           specialRewardString = "${amount}x ${resource.name.value}"
         }
+        3 -> {
+          val sBlueprints = Blueprint.find{ Blueprints.rarity eq RarityTypes.S }
+          specialRewardString = "1x ${sBlueprints.toList().random().name}"
+        }
       }
       startOfNextDay = LocalDate.now().atStartOfDay().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() + 86400000
     }
 
-    val buyer = Buyer.new {
-      buyerId = EntityID(UUID.randomUUID(), Buyers)
-      sellableItems = sellableItemMap
+    val quest = Quest.new {
+      questId = EntityID(UUID.randomUUID(), Quests)
+      wantedItems = sellableItemMap
       this.money = money
       specialRewards = specialRewardString
       timeLimit = if (hasSpecialRewards) startOfNextDay else null
+      this.city = city
     }
-    buyerList.add(buyer)
+    questList.add(quest)
   }
-  return buyerList
+  return questList
 }

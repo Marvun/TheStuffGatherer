@@ -10,6 +10,6 @@ object Cities: Locations() {
   val name = varchar("name", 30)
   val userId = ulong("user_id")
   val travelTime = integer("travel_time")
-  val buyers = varchar("buyers", 1023)
+  val quests = varchar("quests", 1023)
   val purchasableItems = varchar("purchasable_items", 1023)
 }
