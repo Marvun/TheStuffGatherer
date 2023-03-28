@@ -32,6 +32,7 @@ import me.marvuun.database.tables.locations.Homes
 import me.marvuun.database.tables.locations.Sites
 import me.marvuun.enums.ActivityTypes
 import me.marvuun.enums.RarityTypes
+import me.marvuun.enums.ResourceCategories
 import me.marvuun.enums.SiteTypes
 import me.marvuun.util.checkUser
 import me.marvuun.util.millisecondsToDuration
@@ -419,8 +420,9 @@ suspend fun finishGathering(player: Player, user: User, channel: MessageChannel)
       if (inventoryEntries.empty()) {
         Inventory.new {
           userId = user.id.value
-          itemId = resource.short
+          itemId = if (resource.type == ResourceCategories.FUEL) resource.short.replace("raw", "fuel") else resource.short
           this.amount = amount
+          type = resource.type
         }
       } else {
         val inventoryEntry = inventoryEntries.first()
@@ -568,7 +570,7 @@ fun generateSites(player: Player, user: User, amount: Int? = null, rarity: Rarit
   repeat(amount ?: (player.activityDuration / 60000).toInt()) {
 
     val randomNum = (1..100).random()
-    val randomNum2 = if (amount != null) (0..100).random() else 100
+    val randomNum2 = if (amount == null) (0..100).random() else 100
 
     if (randomNum2 > 67) {
       val rarityType = rarity ?: RarityTypes.values().find { randomNum in it.range }!!

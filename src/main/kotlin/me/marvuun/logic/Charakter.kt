@@ -21,6 +21,7 @@ import me.marvuun.database.tables.locations.Cities
 import me.marvuun.database.tables.locations.Homes
 import me.marvuun.database.tables.resources.Blueprints
 import me.marvuun.enums.RarityTypes
+import me.marvuun.enums.ResourceCategories
 import me.marvuun.util.checkUser
 import me.marvuun.util.millisecondsToDuration
 import org.jetbrains.exposed.dao.id.EntityID
@@ -224,11 +225,16 @@ suspend fun GuildSlashCommandEvent<NoArgs>.printLevels() {
   }
 }
 
-suspend fun printInventory(gi: GuildApplicationCommandInteraction) {
-  val inventory = transaction { getInventory(gi.user).toList() }
+suspend fun openInventoryMenu(ai: ActionInteraction, page: Int) {
+  if (ai is GuildApplicationCommandInteraction)
+    commandInvoker = ai.user
+  else
+    if (!checkUser(ai, commandInvoker!!)) return
+
+  val inventory = transaction { getInventory(ai.user).toList() }
 
   if (inventory.isEmpty()) {
-    gi.respondPublic {
+    ai.respondPublic {
       embed {
         title = "Your inventory is empty."
       }
@@ -236,20 +242,63 @@ suspend fun printInventory(gi: GuildApplicationCommandInteraction) {
     return
   }
 
-  gi.respondPublic {
-    embed {
-      title = "You have the following items in your inventory:"
+  val menu = buildInventoryMenu(ai, inventory)
+
+  if (ai is ComponentInteraction)
+    menu.defaultPageIndex = (ai.message.embeds[0].title!!.split(" ").last().toIntOrNull() ?: 1) - 1
+  else
+    menu.defaultPageIndex = 0
+
+  menu.navigate(page)
+  if (ai is GuildApplicationCommandInteraction)
+    ai.respondPublic(menu.getPage())
+  else {
+    ai as ComponentInteraction
+    ai.updatePublicMessage(menu.getPage())
+  }
+
+
+
+}
+
+private suspend fun buildInventoryMenu(ai: ActionInteraction, inventory: List<Inventory>): MyMenu {
+  return myMenu {
+    ResourceCategories.values().forEach { resourceCategory ->
 
       val items = mutableListOf<String>()
 
       transaction {
         inventory.forEach {
-          items.add("${it.amount}x ${getResourceFromShort(it.itemId).name.value}")
+          if (it.amount != 0 && it.type == resourceCategory)
+            items.add("${it.amount}x ${getResourceFromShort(it.itemId).name.value}")
         }
       }
+      if (items.isNotEmpty()) {
+        var resourceCategoryName = resourceCategory.name.lowercase()
+        if (resourceCategoryName != "fish") {
+          if (resourceCategoryName.endsWith("y"))
+            resourceCategoryName = resourceCategoryName.dropLast(1) + "ie"
+          resourceCategoryName += "s"
+        }
+        page {
+          embed {
+            title = "You have the following $resourceCategoryName in your inventory:"
 
-      field {
-        name = items.joinToString("\n")
+            field {
+              name = items.joinToString("\n")
+            }
+          }
+          actionRow {
+            interactionButton(ButtonStyle.Secondary, "previousInventoryPage") {
+              emoji = Emojis.arrowLeft.toPartialEmoji()
+              label = "Left"
+            }
+            interactionButton(ButtonStyle.Secondary, "nextInventoryPage") {
+              emoji = Emojis.arrowRight.toPartialEmoji()
+              label = "Right"
+            }
+          }
+        }
       }
     }
   }

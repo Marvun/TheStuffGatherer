@@ -24,6 +24,7 @@ import me.marvuun.database.daos.resources.*
 import me.marvuun.database.daos.stations.getNextStation
 import me.marvuun.database.tables.Inventories
 import me.marvuun.enums.ActivityTypes
+import me.marvuun.enums.ResourceCategories
 import me.marvuun.enums.StationTypes
 import me.marvuun.enums.getStationTypeFromResource
 import me.marvuun.util.checkUser
@@ -110,7 +111,7 @@ suspend fun askForAmount(ci: ComponentInteraction, ingredients: MutableList<Reso
   }
 
   if (fuel != null) {
-    maxPossibleCrafts.add(inventory.find { it.itemId.replace("raw_", "fuel_") == fuel.short }!!.amount / 5)
+    maxPossibleCrafts.add(inventory.find { it.itemId == fuel.short }!!.amount / 5)
     maxPossibleCrafts.sort()
   }
 
@@ -158,7 +159,7 @@ suspend fun startCrafting(ci: ComponentInteraction, ingredients: MutableList<Res
 
     if (fuel != null) {
       invEntries =
-        inventory.filter { fuel.short == it.itemId.replace("raw_", "fuel_") && it.userId == ci.user.id.value }
+        inventory.filter { fuel.short == it.itemId && it.userId == ci.user.id.value }
       invEntries.forEach {
         it.amount = it.amount - amount * 5
       }
@@ -216,11 +217,7 @@ private fun buildCraftingMessage(
   val missingMaterials = resource.getMissingResources(inventory)
   val availableRecipes = getAvailableRecipes(resource, null, home)
 
-  val availableFuel = transaction {
-    inventory.filter { invEntry ->
-      FuelResource.all().map { it.short }.contains(invEntry.itemId.replace("raw_", "fuel_"))
-    }
-  }
+  val availableFuel = transaction { inventory.filter { it.type == ResourceCategories.FUEL } }
 
   return UpdateMessageInteractionResponseCreateBuilder().apply {
     embed {
@@ -278,11 +275,10 @@ private fun buildCraftingMessage(
 
           placeholder = "Please select a fuel"
           availableFuel.forEach {
-            val fuelShort = it.itemId.replace("raw_", "fuel_")
-            val fuelResource = getResourceFromShort(fuelShort) as FuelResource
-            option(fuelResource.name.value, fuelShort) {
+            val fuelResource = getResourceFromShort(it.itemId) as FuelResource
+            option(fuelResource.name.value, it.itemId) {
               description = "Available: ${it.amount}, Heat Level: ${fuelResource.heatLevel}"
-              if (fuel?.short == fuelShort) default = true
+              if (fuel?.short == it.itemId) default = true
             }
           }
         }

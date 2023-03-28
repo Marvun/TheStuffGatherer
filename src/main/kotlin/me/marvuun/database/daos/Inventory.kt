@@ -11,5 +11,6 @@ class Inventory(id: EntityID<Int>) : IntEntity(id) {
   var userId by Inventories.userId
   var itemId by Inventories.itemId
   var amount by Inventories.amount
+  var type by Inventories.type
 
 }

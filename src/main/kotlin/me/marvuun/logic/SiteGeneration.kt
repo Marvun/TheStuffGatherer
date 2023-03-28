@@ -26,7 +26,16 @@ fun generateResources(rarityType: RarityTypes, siteType: SiteTypes, user: User):
   if (typeCount is Int && amount is IntRange) {
 
     repeat(typeCount) {
-      val type = RawResource.find { RawResources.type inList resourceCategories }.toList().filter { it.maxAtLevel - it.getLevelForResourceCategory(user) <= 10 }.random().short
+      val resources = RawResource.find { RawResources.type inList resourceCategories }.toMutableList()
+
+      if (siteType == SiteTypes.FOREST)
+        resources.add(RawResource.findById("Firewood")!!)
+
+      if (siteType == SiteTypes.MINE)
+        resources.removeIf { it.name.value == "Firewood" }
+
+      val type = resources.filter { it.maxAtLevel - it.getLevelForResourceCategory(user) <= 10 }.random().short
+
       if (map[type] == null) map[type] = amount.random()
       else map[type] = map[type]!! + amount.random()
     }
@@ -63,7 +72,7 @@ fun siteTypeToResourceCategories(siteType: SiteTypes): List<ResourceCategories> 
   return when (siteType) {
     SiteTypes.LAKE -> listOf(ResourceCategories.FISH, ResourceCategories.SAND)
     SiteTypes.RIVER -> listOf(ResourceCategories.FISH, ResourceCategories.SAND)
-    SiteTypes.MINE -> listOf(ResourceCategories.ORE, ResourceCategories.STONE, ResourceCategories.GEM)
+    SiteTypes.MINE -> listOf(ResourceCategories.ORE, ResourceCategories.STONE, ResourceCategories.GEM, ResourceCategories.FUEL)
     SiteTypes.FOREST -> listOf(ResourceCategories.LOG, ResourceCategories.PLANT, ResourceCategories.ANIMAL, ResourceCategories.FRUIT, ResourceCategories.BERRY)
     SiteTypes.MEADOW -> listOf(ResourceCategories.BERRY, ResourceCategories.PLANT, ResourceCategories.ANIMAL, ResourceCategories.FRUIT)
   }

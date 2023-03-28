@@ -19,6 +19,7 @@ fun characterCommands() = commands("Character") {
     execute {
       isRegisteredPlayer() ?: return@execute
       getLocation(interaction!!)
+      generateSites(getPlayer(interaction!!.user), interaction!!.user, 20)
     }
   }
   slash("levels", "Shows you your level progresses.") {
@@ -30,7 +31,7 @@ fun characterCommands() = commands("Character") {
   slash("inventory", "Shows you, what you've got in your inventory.") {
     execute {
       isRegisteredPlayer() ?: return@execute
-      printInventory(interaction!!)
+      openInventoryMenu(interaction!!, 0)
     }
   }
   slash("abandon", "Abandons a site, which still has resources left.") {

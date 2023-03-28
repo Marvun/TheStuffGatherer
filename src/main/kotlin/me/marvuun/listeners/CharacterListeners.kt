@@ -16,6 +16,8 @@ fun characterButtonListeners() = listeners {
     when (ci.componentId) {
       "previousPlayerQuestPage" -> openPlayerQuestMenu(ci, -1)
       "nextPlayerQuestPage" -> openPlayerQuestMenu(ci, 1)
+      "previousInventoryPage" -> openInventoryMenu(ci, -1)
+      "nextInventoryPage" -> openInventoryMenu(ci, 1)
       "finishQuest" -> {
         finishQuest(ci)
         openPlayerQuestMenu(ci, 0)
