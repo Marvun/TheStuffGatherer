@@ -3,7 +3,6 @@ package me.marvuun.logic
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.core.behavior.interaction.*
 import dev.kord.core.entity.User
-import dev.kord.core.entity.application.ApplicationCommand
 import dev.kord.core.entity.interaction.*
 import dev.kord.rest.builder.message.create.actionRow
 import dev.kord.rest.builder.message.create.embed
@@ -17,7 +16,6 @@ import me.marvuun.database.daos.location.*
 import me.marvuun.database.daos.resources.Blueprint
 import me.marvuun.database.daos.resources.getResourceFromName
 import me.marvuun.database.daos.resources.getResourceFromShort
-import me.marvuun.database.daos.resources.getResourcesDisplayName
 import me.marvuun.database.tables.*
 import me.marvuun.database.tables.locations.Cities
 import me.marvuun.database.tables.locations.Homes
@@ -66,7 +64,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.startJourney() {
         name = "Phanotesia"
         cityId = EntityID(UUID.randomUUID(), Cities)
         userId = author.id.value
-        travelTime = (sqrt(xCoordinate.toDouble() * xCoordinate.toDouble() + yCoordinate.toDouble() * yCoordinate.toDouble()) * 10000).toInt()
+        travelTime = (sqrt(xCoordinate.toDouble() * xCoordinate.toDouble() + yCoordinate.toDouble() * yCoordinate.toDouble()) * 5000).toInt()
         quests = mutableListOf()
         purchasableItems = generatePurchasableItems()
       }
@@ -100,67 +98,79 @@ suspend fun GuildSlashCommandEvent<NoArgs>.printSites() {
   }
 }
 
-suspend fun GuildSlashCommandEvent<NoArgs>.getLocation() {
-  val player = getPlayer(author)
+suspend fun getLocation(ci: GuildApplicationCommandInteraction) {
+  val player = getPlayer(ci.user)
 
   if (player.currentLocation == null) {
-    respond {
-      title = "You are in the middle of nowhere."
+    ci.respondPublic {
+      embed {
+        title = "You are in the middle of nowhere."
+      }
     }
     return
   }
-  val location = getLocationFromUUID(author.id.value, player.currentLocation!!)
+  val location = getLocationFromUUID(ci.user.id.value, player.currentLocation!!)
 
   when (location) {
     is Home -> {
-      respond {
-        title = "You are currently at home."
+      ci.respondPublic {
+        embed {
+          title = "You are currently at home."
 
-        field {
-          inline = true
-          name = "Furnace"
-          value = "Level: ${location.furnaceLevel}"
-        }
+          field {
+            inline = true
+            name = "Furnace"
+            value = "Level: ${location.furnaceLevel}"
+          }
 
-        field {
-          inline = true
-          name = "Sawmill"
-          value = "Level: ${location.sawmillLevel}"
-        }
+          field {
+            inline = true
+            name = "Sawmill"
+            value = "Level: ${location.sawmillLevel}"
+          }
 
-        field {
-          inline = true
-          name = "Stone Cutter"
-          value = "Level: ${location.stoneCutterLevel}"
+          field {
+            inline = true
+            name = "Stone Cutter"
+            value = "Level: ${location.stoneCutterLevel}"
+          }
         }
       }
       return
     }
     is City -> {
-      openCityMenu(location)
+      openCityMenu(location, ci)
       return
     }
     is Site -> {
       val totalResources = transaction { location.totalResources }
       val currentResources = transaction { location.currentResources }
-
-      respond {
-        title = "You are currently at a ${location.type.name.lowercase()}.\n"
-        description = "The number represents how many times you can gather the resource here."
-        footer {
-          text = "Hint: Use /gather to start gathering."
+      val isBusy = transaction { player.currentActivityType } != null
+      ci.respondPublic {
+        embed {
+          title = "You are currently at a ${location.type.name.lowercase()}.\n"
+          description = "The number represents how many times you can gather the resource here."
+          totalResources.forEach { (short, amount) ->
+            val resource = getResourceFromShort(short)
+            field {
+              name = resource.name.value
+              value = "${currentResources[resource.short] ?: "0"}/$amount"
+            }
+          }
+          if (isBusy)
+            field {
+              name = "You can't gather right now, you are busy."
+            }
         }
-        totalResources.forEach { (short, amount) ->
-          val resource = getResourceFromShort(short)
-          field {
-            name = resource.name.value
-            value = "${currentResources[resource.short]}/$amount"
+        actionRow {
+          interactionButton(ButtonStyle.Secondary, "openGatheringMenu") {
+            disabled = isBusy
+            label = "Start Gathering"
           }
         }
       }
     }
   }
-
 }
 
 suspend fun GuildSlashCommandEvent<NoArgs>.printLevels() {
@@ -214,29 +224,33 @@ suspend fun GuildSlashCommandEvent<NoArgs>.printLevels() {
   }
 }
 
-suspend fun GuildSlashCommandEvent<NoArgs>.printInventory() {
-  val inventory = transaction { getInventory(author).toList() }
+suspend fun printInventory(gi: GuildApplicationCommandInteraction) {
+  val inventory = transaction { getInventory(gi.user).toList() }
 
   if (inventory.isEmpty()) {
-    respond {
-      title = "Your inventory is empty."
+    gi.respondPublic {
+      embed {
+        title = "Your inventory is empty."
+      }
     }
     return
   }
 
-  respond {
-    title = "You have the following items in your inventory:"
+  gi.respondPublic {
+    embed {
+      title = "You have the following items in your inventory:"
 
-    val items = mutableListOf<String>()
+      val items = mutableListOf<String>()
 
-    transaction {
-      inventory.forEach {
-        items.add("${it.amount}x ${getResourceFromShort(it.itemId).name.value}")
+      transaction {
+        inventory.forEach {
+          items.add("${it.amount}x ${getResourceFromShort(it.itemId).name.value}")
+        }
       }
-    }
 
-    field {
-      name = items.joinToString("\n")
+      field {
+        name = items.joinToString("\n")
+      }
     }
   }
 }

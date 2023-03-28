@@ -3,7 +3,7 @@ package me.marvuun.logic
 import dev.kord.rest.builder.message.create.MessageCreateBuilder
 
 class MyMenu {
-  private val pages = mutableListOf< MessageCreateBuilder.() -> Unit>()
+  val pages = mutableListOf< MessageCreateBuilder.() -> Unit>()
   var defaultPageIndex = 0
     set(value) {
       pageIndex = value

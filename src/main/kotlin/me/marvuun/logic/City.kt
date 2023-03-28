@@ -5,11 +5,11 @@ import dev.kord.core.behavior.interaction.respondPublic
 import dev.kord.core.behavior.interaction.updatePublicMessage
 import dev.kord.core.entity.User
 import dev.kord.core.entity.interaction.ComponentInteraction
+import dev.kord.core.entity.interaction.GuildApplicationCommandInteraction
+import dev.kord.rest.builder.component.option
 import dev.kord.rest.builder.message.create.actionRow
 import dev.kord.rest.builder.message.create.embed
 import dev.kord.x.emoji.Emojis
-import me.jakejmattson.discordkt.NoArgs
-import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.jakejmattson.discordkt.extensions.toPartialEmoji
 import me.marvuun.database.daos.Quest
 import me.marvuun.database.daos.location.City
@@ -21,15 +21,16 @@ import me.marvuun.util.millisecondsToDuration
 import org.jetbrains.exposed.sql.transactions.transaction
 
 private var commandInvoker: User? = null
-suspend fun GuildSlashCommandEvent<NoArgs>.openCityMenu(city: City) {
-  commandInvoker = author
-  interaction!!.respondPublic {
+suspend fun openCityMenu(city: City, ci: GuildApplicationCommandInteraction) {
+  commandInvoker = ci.user
+  ci.respondPublic {
     embed {
       title = "You are currently in ${city.name}."
       description = "What do you want to do?"
     }
     actionRow {
-      selectMenu("cityMenuSelect") {
+      stringSelect("cityMenuSelect") {
+
         option("Quests", "quests") {
           description = "Available: ${city.quests.size}"
         }
@@ -37,7 +38,6 @@ suspend fun GuildSlashCommandEvent<NoArgs>.openCityMenu(city: City) {
       }
     }
   }
-
 }
 
 suspend fun openCityQuestMenu(ci: ComponentInteraction, page: Int) {

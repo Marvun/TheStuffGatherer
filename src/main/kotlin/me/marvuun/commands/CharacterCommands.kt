@@ -18,7 +18,7 @@ fun characterCommands() = commands("Character") {
   slash("location" , "Tells you where you are and what can be found at your current location.") {
     execute {
       isRegisteredPlayer() ?: return@execute
-      getLocation()
+      getLocation(interaction!!)
     }
   }
   slash("levels", "Shows you your level progresses.") {
@@ -30,7 +30,7 @@ fun characterCommands() = commands("Character") {
   slash("inventory", "Shows you, what you've got in your inventory.") {
     execute {
       isRegisteredPlayer() ?: return@execute
-      printInventory()
+      printInventory(interaction!!)
     }
   }
   slash("abandon", "Abandons a site, which still has resources left.") {

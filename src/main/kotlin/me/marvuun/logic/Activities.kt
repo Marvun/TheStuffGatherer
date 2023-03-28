@@ -1,29 +1,34 @@
 package me.marvuun.logic
 
+import dev.kord.common.entity.TextInputStyle
 import dev.kord.core.behavior.channel.createMessage
-import dev.kord.core.behavior.interaction.respondEphemeral
+import dev.kord.core.behavior.interaction.ComponentInteractionBehavior
+import dev.kord.core.behavior.interaction.modal
 import dev.kord.core.behavior.interaction.respondPublic
-import dev.kord.core.behavior.interaction.updateEphemeralMessage
 import dev.kord.core.behavior.interaction.updatePublicMessage
 import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.MessageChannel
 import dev.kord.core.entity.interaction.ActionInteraction
 import dev.kord.core.entity.interaction.ComponentInteraction
-import dev.kord.core.entity.interaction.GuildApplicationCommandInteraction
+import dev.kord.core.entity.interaction.ModalSubmitInteraction
+import dev.kord.rest.builder.component.SelectOptionBuilder
+import dev.kord.rest.builder.component.option
 import dev.kord.rest.builder.message.create.actionRow
 import dev.kord.rest.builder.message.create.embed
 import me.jakejmattson.discordkt.Args1
 import me.jakejmattson.discordkt.NoArgs
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
-import me.marvuun.conversations.gatherConversation
-import me.marvuun.database.daos.*
+import me.marvuun.database.daos.Inventory
+import me.marvuun.database.daos.Level
+import me.marvuun.database.daos.Player
+import me.marvuun.database.daos.PlayerSite
 import me.marvuun.database.daos.activities.CurrentPlayerActivity
 import me.marvuun.database.daos.location.*
 import me.marvuun.database.daos.resources.RawResource
 import me.marvuun.database.daos.resources.getResourceFromShort
+import me.marvuun.database.tables.Inventories
 import me.marvuun.database.tables.locations.Cities
 import me.marvuun.database.tables.locations.Homes
-import me.marvuun.database.tables.Inventories
 import me.marvuun.database.tables.locations.Sites
 import me.marvuun.enums.ActivityTypes
 import me.marvuun.enums.RarityTypes
@@ -31,6 +36,7 @@ import me.marvuun.enums.SiteTypes
 import me.marvuun.util.checkUser
 import me.marvuun.util.millisecondsToDuration
 import me.marvuun.util.minutesToDuration
+import me.marvuun.util.toIntRange
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -46,8 +52,10 @@ suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
   checkIfBusy(interaction!!) ?: return
 
   if (args.first <= 0) {
-    respond {
-      title = "You can't explore for ${args.first} minutes!"
+    interaction!!.respondPublic {
+      embed {
+        title = "You can't explore for ${args.first} minutes!"
+      }
     }
     return
   }
@@ -67,8 +75,108 @@ suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
     }
   }
 
-  respond {
-    title = "You went exploring for ${minutesToDuration(args.first)}!"
+  interaction!!.respondPublic {
+    embed {
+      title = "You went exploring for ${minutesToDuration(args.first)}!"
+    }
+  }
+}
+
+suspend fun openGatheringMenu(ci: ActionInteraction) {
+  commandInvoker = ci.user
+
+  val site = getSite(ci.user)
+  val currentResources = site.currentResources.toMutableMap()
+  if (ci is ComponentInteractionBehavior)
+    ci.updatePublicMessage {
+      embed {
+        title = "Choose what you want to gather."
+      }
+      actionRow {
+        stringSelect("gatherSelectResource") {
+          this.allowedValues = 1..currentResources.size
+          currentResources.forEach { (short, amount) ->
+            val resource = getResourceFromShort(short)
+            option(resource.name.value, short) {
+              description = "$amount/${site.currentResources[short]}"
+            }
+          }
+        }
+      }
+    }
+}
+
+suspend fun askGatheringAmount(ci: ComponentInteraction, resourceShorts: MutableList<String>) {
+  if (!checkUser(ci, commandInvoker!!)) return
+  val site = getSite(ci.user)
+  val currentResources = site.currentResources.toMutableMap()
+
+  ci.modal("How often do you want to gather?", "askGatheringAmount") {
+    resourceShorts.forEach {
+      actionRow {
+        val resource = getResourceFromShort(it)
+        textInput(TextInputStyle.Short, "gatheringAmountTextInput_${resource.short}", resource.name.value) {
+          placeholder = "Maximum for ${resource.name.value} is: ${currentResources[it]}"
+        }
+      }
+    }
+  }
+}
+
+suspend fun startGathering(msi: ModalSubmitInteraction, resources: MutableMap<String, Int>) {
+  if (!checkUser(msi, commandInvoker!!)) return
+  val player = getPlayer(msi.user)
+  val site = getSite(msi.user)
+  var duration = 0L
+  val currentResources = site.currentResources.toMutableMap()
+  resources.forEach { (short, amount) ->
+    currentResources[short] = currentResources[short]!! - amount
+    if (currentResources[short]!! == 0) currentResources.remove(short)
+    val gatheringTime = (getResourceFromShort(short) as RawResource).gatherDuration
+    duration += gatheringTime * amount
+  }
+
+  val startTime = System.currentTimeMillis()
+  transaction {
+    site.currentResources = currentResources
+    player.activityStartTime = startTime
+    player.currentActivityType = ActivityTypes.GATHERING
+    player.currentActivity = "Gathering resources at the ${site.type.name.lowercase()}."
+    player.activityDuration = duration
+    player.currentlyMaking = resources.mapValues { it.value.toIntRange() }
+  }
+
+  val descriptionText = if (currentResources.isEmpty()) {
+    transaction {
+      player.currentLocation = null
+
+      val playerSite = getPlayerSites(msi.user)
+      playerSite.deleteColumnWithUUID(site.siteId.value)
+
+      val occupiedCoordinates = player.occupiedCoordinates
+      occupiedCoordinates.remove(mutableListOf(site.xCoordinate, site.yCoordinate))
+      player.occupiedCoordinates = occupiedCoordinates
+
+      site.delete()
+    }
+    "Since you will be gathering all the resources, that were left, this site will be depleted."
+  } else null
+
+  val guild = msi.message!!.getGuild()
+  transaction {
+    CurrentPlayerActivity.new {
+      guildId = guild.id.value
+      channelId = msi.channel.id.value
+      userId = msi.user.id.value
+      activityEnd = startTime + duration
+    }
+  }
+
+  msi.updatePublicMessage {
+    embed {
+      title = "You will be gathering for ${millisecondsToDuration(duration)} at the ${site.type.name.lowercase()}."
+      description = descriptionText
+    }
   }
 }
 
@@ -84,13 +192,14 @@ suspend fun GuildSlashCommandEvent<NoArgs>.openTravelMenu() {
       title = "Where do you want to travel?"
     }
     actionRow {
-      selectMenu("travelMenu") {
+      stringSelect("travelMenu") {
+
         transaction {
           if (player.currentLocation != getHome(author).homeId.value)
-            option("Home", "home") {
+            option("Home", "home", fun SelectOptionBuilder.() {
               description = "Travel to your home."
-            }
-          if (!City.find { Cities.userId eq player.userId.value and (Cities.id neq player.currentLocation)}.empty())
+            })
+          if (!City.find { Cities.userId eq player.userId.value and (Cities.id neq player.currentLocation) }.empty())
             option("Cities", "cities") {
               description = "Travel to one of your discovered cities."
             }
@@ -106,7 +215,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.openTravelMenu() {
 }
 
 suspend fun openTravelCategoryMenu(ci: ComponentInteraction, category: String) {
-  if(!checkUser(ci, commandInvoker!!)) return
+  if (!checkUser(ci, commandInvoker!!)) return
   val home = getHome(ci.user)
   val player = getPlayer(ci.user)
   val sites = getSites(ci.user)
@@ -140,13 +249,14 @@ suspend fun openTravelCategoryMenu(ci: ComponentInteraction, category: String) {
         }
       }
     }
+
     "sites" -> {
       ci.updatePublicMessage {
         embed {
           title = "To what kind of site do you want to travel?"
         }
         actionRow {
-          selectMenu("travelSiteMenu") {
+          stringSelect("travelSiteMenu") {
             sites.forEach {
               option(it.key.getDisplayName(), it.key.name) {
                 description = "${it.value.size} left"
@@ -156,15 +266,16 @@ suspend fun openTravelCategoryMenu(ci: ComponentInteraction, category: String) {
         }
       }
     }
+
     "cities" -> {
       ci.updatePublicMessage {
         embed {
           title = "To which city do you want to travel?"
         }
         actionRow {
-          selectMenu("travelCityMenu") {
+          stringSelect("travelCityMenu") {
             transaction {
-              City.find { Cities.userId eq player.userId.value and (Cities.id neq player.currentLocation)}.forEach {
+              City.find { Cities.userId eq player.userId.value and (Cities.id neq player.currentLocation) }.forEach {
                 option(it.name, it.name) {
                   description = "Travel time: ${millisecondsToDuration(it.travelTime.toLong())}"
                 }
@@ -178,7 +289,7 @@ suspend fun openTravelCategoryMenu(ci: ComponentInteraction, category: String) {
 }
 
 suspend fun openTravelSiteMenu(ci: ComponentInteraction, selectedSiteType: String) {
-  if(!checkUser(ci, commandInvoker!!)) return
+  if (!checkUser(ci, commandInvoker!!)) return
   val sites = getSites(ci.user)
   val player = getPlayer(ci.user)
   val guild = ci.message.getGuild()
@@ -209,9 +320,10 @@ suspend fun openTravelSiteMenu(ci: ComponentInteraction, selectedSiteType: Strin
       }
     }
     ci.updatePublicMessage {
-    components = mutableListOf()
+      components = mutableListOf()
       embed {
-        title = "You will now travel ${millisecondsToDuration(site.travelTime.toLong())} to the ${site.type.name.lowercase()}."
+        title =
+          "You will now travel ${millisecondsToDuration(site.travelTime.toLong())} to the ${site.type.name.lowercase()}."
       }
     }
 
@@ -228,10 +340,11 @@ suspend fun openTravelSiteMenu(ci: ComponentInteraction, selectedSiteType: Strin
 }
 
 suspend fun openTravelCityMenu(ci: ComponentInteraction, selectedCityName: String) {
-  if(!checkUser(ci, commandInvoker!!)) return
+  if (!checkUser(ci, commandInvoker!!)) return
   val player = getPlayer(ci.user)
   val guild = ci.message.getGuild()
-  val city = transaction {  City.find { Cities.name eq selectedCityName and (Cities.userId eq ci.user.id.value)}.first() }
+  val city =
+    transaction { City.find { Cities.name eq selectedCityName and (Cities.userId eq ci.user.id.value) }.first() }
   transaction {
     val startTime = System.currentTimeMillis()
 
@@ -354,9 +467,11 @@ suspend fun finishTraveling(player: Player, user: User, channel: MessageChannel)
         is Home -> {
           "You arrived at home."
         }
+
         is City -> {
           "Your arrived at ${location.name}."
         }
+
         else -> {
           location as Site
           "You arrived at the ${location.type.getDisplayName()}."
@@ -399,9 +514,6 @@ suspend fun GuildSlashCommandEvent<NoArgs>.getActivity() {
     }
   }
 }
-
-suspend fun GuildSlashCommandEvent<NoArgs>.startGathering() =
-  gatherConversation().startSlashResponse(discord, author, this)
 
 suspend fun checkIfBusy(interaction: ActionInteraction): Unit? {
 
@@ -456,9 +568,9 @@ fun generateSites(player: Player, user: User, amount: Int? = null, rarity: Rarit
   repeat(amount ?: (player.activityDuration / 60000).toInt()) {
 
     val randomNum = (1..100).random()
-    val randomNum2 = (0..100).random()
+    val randomNum2 = if (amount != null) (0..100).random() else 100
 
-    if (randomNum2 > 0) {
+    if (randomNum2 > 67) {
       val rarityType = rarity ?: RarityTypes.values().find { randomNum in it.range }!!
       val siteType = SiteTypes.values().random()
 
@@ -478,7 +590,8 @@ fun generateSites(player: Player, user: User, amount: Int? = null, rarity: Rarit
           this.rarity = rarityType
           currentResources = resources
           totalResources = resources
-          travelTime = (sqrt(xCoordinate.toDouble() * xCoordinate.toDouble() + yCoordinate.toDouble() * yCoordinate.toDouble()) * 10000).toInt()
+          travelTime =
+            (sqrt(xCoordinate.toDouble() * xCoordinate.toDouble() + yCoordinate.toDouble() * yCoordinate.toDouble()) * 5000).toInt()
         }
       }
       count++

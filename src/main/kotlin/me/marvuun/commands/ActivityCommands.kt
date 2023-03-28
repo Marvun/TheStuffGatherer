@@ -24,12 +24,6 @@ fun activityCommands() = commands("Activity") {
       getActivity()
     }
   }
-  slash("gather", "Gather the resources at your current location.") {
-    execute {
-      isRegisteredPlayer() ?: return@execute
-      startGathering()
-    }
-  }
   slash("craft", "Start to craft items with your resources.") {
     execute {
       isRegisteredPlayer() ?: return@execute

@@ -8,6 +8,7 @@ import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.MessageChannel
 import dev.kord.core.entity.interaction.ActionInteraction
 import dev.kord.core.entity.interaction.ComponentInteraction
+import dev.kord.rest.builder.component.option
 import dev.kord.rest.builder.message.create.UpdateMessageInteractionResponseCreateBuilder
 import dev.kord.rest.builder.message.create.actionRow
 import dev.kord.rest.builder.message.create.embed
@@ -15,10 +16,10 @@ import dev.kord.x.emoji.Emojis
 import me.jakejmattson.discordkt.NoArgs
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.jakejmattson.discordkt.extensions.toPartialEmoji
-import me.marvuun.database.daos.location.Home
 import me.marvuun.database.daos.Inventory
 import me.marvuun.database.daos.Player
 import me.marvuun.database.daos.activities.CurrentPlayerActivity
+import me.marvuun.database.daos.location.Home
 import me.marvuun.database.daos.resources.*
 import me.marvuun.database.daos.stations.getNextStation
 import me.marvuun.database.tables.Inventories
@@ -51,7 +52,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.openCraftingMenu() {
         title = "At which station do you want to craft?"
       }
       actionRow {
-        selectMenu("craftingStationMenu") {
+        stringSelect("craftingStationMenu") {
           if (home.furnaceLevel > 0)
             option("Furnace", "furnace") {
               description = "Used to process ores, nugget and ingots."
@@ -70,7 +71,7 @@ suspend fun GuildSlashCommandEvent<NoArgs>.openCraftingMenu() {
 }
 
 suspend fun openCraftingMenu(ci: ComponentInteraction, stationType: StationTypes) {
-  if(!checkUser(ci, commandInvoker!!)) return
+  if (!checkUser(ci, commandInvoker!!)) return
   val home = getHome(ci.user)
   val inventory = transaction { getInventory(ci.user).toList() }
 
@@ -81,10 +82,12 @@ suspend fun openCraftingMenu(ci: ComponentInteraction, stationType: StationTypes
       description = "Select what you want to craft!"
     }
     actionRow {
-      selectMenu("${stationType.name.lowercase()}Recipes") {
+      stringSelect("${stationType.name.lowercase()}Recipes") {
+
         availableRecipes.forEach {
           option(it.name.value, it.short) {
-            description = "You currently have: ${inventory.find { invEntry -> invEntry.itemId == it.short }?.amount ?: "0"}"
+            description =
+              "You currently have: ${inventory.find { invEntry -> invEntry.itemId == it.short }?.amount ?: "0"}"
           }
         }
       }
@@ -95,7 +98,7 @@ suspend fun openCraftingMenu(ci: ComponentInteraction, stationType: StationTypes
 
 
 suspend fun askForAmount(ci: ComponentInteraction, ingredients: MutableList<Resource<String>?>): Int {
-  if(!checkUser(ci, commandInvoker!!)) return 1
+  if (!checkUser(ci, commandInvoker!!)) return 1
   val inventory = transaction { getInventory(ci.user).toList() }
   val resource = ingredients[0] as Recipe<*>
   val fuel = ingredients[1] as FuelResource?
@@ -123,7 +126,7 @@ suspend fun askForAmount(ci: ComponentInteraction, ingredients: MutableList<Reso
 }
 
 suspend fun startCrafting(ci: ComponentInteraction, ingredients: MutableList<Resource<String>?>, amount: Int) {
-  if(!checkUser(ci, commandInvoker!!)) return
+  if (!checkUser(ci, commandInvoker!!)) return
   val player = getPlayer(ci.user)
   val inventory = transaction { getInventory(ci.user).toList() }
   val resource = ingredients[0] as Recipe<*>
@@ -134,7 +137,8 @@ suspend fun startCrafting(ci: ComponentInteraction, ingredients: MutableList<Res
   transaction {
     resource.outputAmount.mapValues { entry -> entry.value * amount }
     player.activityStartTime = startTime
-    player.currentActivity = "Crafting ${resource.outputAmount[resource.short]!!.toMyString(amount, "-")}x ${resource.name.value}."
+    player.currentActivity =
+      "Crafting ${resource.outputAmount[resource.short]!!.toMyString(amount, "-")}x ${resource.name.value}."
     player.currentActivityType = ActivityTypes.CRAFTING
     player.activityDuration = resource.craftingDuration * amount
     player.currentlyMaking = resource.outputAmount
@@ -147,7 +151,7 @@ suspend fun startCrafting(ci: ComponentInteraction, ingredients: MutableList<Res
     }
 
     var invEntries =
-      inventory.filter { resource.neededResources.keys.contains(it.itemId) && it.userId == ci.user.id.value}
+      inventory.filter { resource.neededResources.keys.contains(it.itemId) && it.userId == ci.user.id.value }
     invEntries.forEach {
       it.amount = it.amount - resource.neededResources[it.itemId]!! * amount
     }
@@ -166,15 +170,26 @@ suspend fun startCrafting(ci: ComponentInteraction, ingredients: MutableList<Res
   ci.updatePublicMessage {
     components = mutableListOf()
     embed {
-      title = "You started to craft ${resource.outputAmount[resource.short]!!.toMyString(amount, "-")}x ${resource.name.value}."
+      title = "You started to craft ${
+        resource.outputAmount[resource.short]!!.toMyString(
+          amount,
+          "-"
+        )
+      }x ${resource.name.value}."
       description = "It will take ${millisecondsToDuration(resource.craftingDuration * amount)}."
     }
   }
 
 }
 
-suspend fun updateCraftingMenu(ingredients: MutableList<Resource<String>?>, ci: ActionInteraction, amount: Int = 1, validAmount: Boolean = true, needsHeat: Boolean = false) {
-  if(!checkUser(ci, commandInvoker!!)) return
+suspend fun updateCraftingMenu(
+  ingredients: MutableList<Resource<String>?>,
+  ci: ActionInteraction,
+  amount: Int = 1,
+  validAmount: Boolean = true,
+  needsHeat: Boolean = false
+) {
+  if (!checkUser(ci, commandInvoker!!)) return
   val home = getHome(ci.user)
   val inventory = transaction { getInventory(ci.user).toList() }
   val message = buildCraftingMessage(ingredients, inventory, home, amount, validAmount, needsHeat)
@@ -187,7 +202,14 @@ suspend fun updateCraftingMenu(ingredients: MutableList<Resource<String>?>, ci: 
   }
 }
 
-private fun buildCraftingMessage(ingredients: MutableList<Resource<String>?>, inventory: List<Inventory>, home: Home, amount: Int, validAmount: Boolean, needsHeat: Boolean): UpdateMessageInteractionResponseCreateBuilder {
+private fun buildCraftingMessage(
+  ingredients: MutableList<Resource<String>?>,
+  inventory: List<Inventory>,
+  home: Home,
+  amount: Int,
+  validAmount: Boolean,
+  needsHeat: Boolean
+): UpdateMessageInteractionResponseCreateBuilder {
   val resource = ingredients[0] as Recipe<*>
   val stationType = getStationTypeFromResource(resource)
   val fuel = if (needsHeat) ingredients[1] as FuelResource? else null
@@ -211,9 +233,10 @@ private fun buildCraftingMessage(ingredients: MutableList<Resource<String>?>, in
             "\n",
             amount
           )
-        }${if (needsHeat)
-          "\n${amount * 5}x ${fuel?.name?.value ?: "Fuel"}"
-        else ""
+        }${
+          if (needsHeat)
+            "\n${amount * 5}x ${fuel?.name?.value ?: "Fuel"}"
+          else ""
         }"
       }
       if (needsHeat) {
@@ -238,10 +261,12 @@ private fun buildCraftingMessage(ingredients: MutableList<Resource<String>?>, in
 
     }
     actionRow {
-      selectMenu("${stationType.name.lowercase()}Recipes") {
+      stringSelect("${stationType.name.lowercase()}Recipes") {
+
         availableRecipes.forEach {
           option(it.name.value, it.short) {
-            description = "You currently have: ${inventory.find { invEntry -> invEntry.itemId == it.short }?.amount ?: "0"}"
+            description =
+              "You currently have: ${inventory.find { invEntry -> invEntry.itemId == it.short }?.amount ?: "0"}"
             if (it.short == resource.short) default = true
           }
         }
@@ -249,7 +274,8 @@ private fun buildCraftingMessage(ingredients: MutableList<Resource<String>?>, in
     }
     if (needsHeat && availableFuel.isNotEmpty()) {
       actionRow {
-        selectMenu("furnaceFuel") {
+        stringSelect("furnaceFuel") {
+
           placeholder = "Please select a fuel"
           availableFuel.forEach {
             val fuelShort = it.itemId.replace("raw_", "fuel_")
@@ -259,10 +285,9 @@ private fun buildCraftingMessage(ingredients: MutableList<Resource<String>?>, in
               if (fuel?.short == fuelShort) default = true
             }
           }
-
         }
       }
-      if (fuel != null && missingMaterials.isEmpty()){
+      if (fuel != null && missingMaterials.isEmpty()) {
         actionRow {
           interactionButton(ButtonStyle.Secondary, "confirmRecipe") {
             label = "Confirm"
@@ -273,8 +298,7 @@ private fun buildCraftingMessage(ingredients: MutableList<Resource<String>?>, in
           }
         }
       }
-    }
-    else if (!needsHeat && missingMaterials.isEmpty()) {
+    } else if (!needsHeat && missingMaterials.isEmpty()) {
       actionRow {
         interactionButton(ButtonStyle.Secondary, "confirmRecipe") {
           label = "Confirm"
@@ -315,7 +339,7 @@ suspend fun finishCrafting(player: Player, user: User, channel: MessageChannel) 
         val craftingTimes = amount.first / resource.outputAmount[resource.short]!!.first
         levels.addExperience(resource, craftingTimes, user, channel)
       }
-     }
+    }
     player.currentlyMaking = mutableMapOf()
 
   }

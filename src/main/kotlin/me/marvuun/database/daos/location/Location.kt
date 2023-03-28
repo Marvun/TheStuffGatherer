@@ -40,15 +40,15 @@ fun updateTravelTimes(destination: UUID, user: User) {
     cities.forEach {
       xLength = abs(x - it.xCoordinate).toDouble()
       yLength = abs(y - it.yCoordinate).toDouble()
-      it.travelTime = (sqrt(xLength * xLength + yLength * yLength) * 10000).toInt()
+      it.travelTime = (sqrt(xLength * xLength + yLength * yLength) * 5000).toInt()
     }
     xLength = abs(x - home.xCoordinate).toDouble()
     yLength = abs(y - home.yCoordinate).toDouble()
-    home.travelTime = (sqrt(xLength * xLength + yLength * yLength) * 10000).toInt()
+    home.travelTime = (sqrt(xLength * xLength + yLength * yLength) * 5000).toInt()
     sites.flatMap { it.value }.forEach {
       xLength = abs(x - it.xCoordinate).toDouble()
       yLength = abs(y - it.yCoordinate).toDouble()
-      it.travelTime = (sqrt(xLength * xLength + yLength * yLength) * 10000).toInt()
+      it.travelTime = (sqrt(xLength * xLength + yLength * yLength) * 5000).toInt()
     }
   }
 

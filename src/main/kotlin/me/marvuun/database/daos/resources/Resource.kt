@@ -61,7 +61,7 @@ fun getResourceFromShort(short: String) =
 
 fun getResourceFromName(name: String) =
   transaction {
-    var resource: Resource<*>?
+    var resource: Resource<String>?
     resource = FurnaceRecipe.find { FurnaceRecipes.id eq name }.firstOrNull()
     if (resource == null)
       resource = SawmillRecipe.find { SawmillRecipes.id eq name }.firstOrNull()
