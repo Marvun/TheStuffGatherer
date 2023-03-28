@@ -1,37 +1,26 @@
 package me.marvuun.logic
 
 import dev.kord.common.entity.ButtonStyle
-import dev.kord.core.behavior.interaction.respondPublic
-import dev.kord.core.behavior.interaction.updatePublicMessage
 import dev.kord.core.entity.User
 import dev.kord.core.entity.interaction.ActionInteraction
-import dev.kord.core.entity.interaction.ComponentInteraction
 import dev.kord.core.entity.interaction.GuildApplicationCommandInteraction
 import dev.kord.rest.builder.message.create.actionRow
 import dev.kord.rest.builder.message.create.embed
 import dev.kord.x.emoji.Emojis
 import me.jakejmattson.discordkt.Discord
 import me.jakejmattson.discordkt.extensions.toPartialEmoji
+import me.marvuun.util.checkUser
 
 private var commandInvoker: User? = null
-suspend fun showHelp(ci: ActionInteraction, discord: Discord, page: Int) {
-  commandInvoker = ci.user
+suspend fun showHelp(ai: ActionInteraction, discord: Discord, page: Int) {
+  if (ai is GuildApplicationCommandInteraction)
+    commandInvoker = ai.user
+  else
+    if (!checkUser(ai, commandInvoker!!)) return
 
   val menu = buildHelpMenu(discord)
-
-  if (ci is ComponentInteraction)
-    menu.defaultPageIndex = (ci.message.embeds[0].footer!!.text.split(" ").last().split("/").first().toIntOrNull() ?: 1) - 1
-  else
-    menu.defaultPageIndex = 0
-
-  menu.navigate(page)
-
-  if (ci is GuildApplicationCommandInteraction)
-    ci.respondPublic(menu.getPage())
-  else {
-    ci as ComponentInteraction
-    ci.updatePublicMessage(menu.getPage())
-  }
+  println()
+  menu.respond(ai, page)
 
 }
 

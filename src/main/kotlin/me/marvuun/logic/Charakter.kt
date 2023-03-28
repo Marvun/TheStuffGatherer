@@ -242,94 +242,84 @@ suspend fun openInventoryMenu(ai: ActionInteraction, page: Int) {
     return
   }
 
-  val menu = buildInventoryMenu(ai, inventory)
+  val menu = buildInventoryMenu(inventory)
 
-  if (ai is ComponentInteraction)
-    menu.defaultPageIndex = (ai.message.embeds[0].title!!.split(" ").last().toIntOrNull() ?: 1) - 1
-  else
-    menu.defaultPageIndex = 0
-
-  menu.navigate(page)
-  if (ai is GuildApplicationCommandInteraction)
-    ai.respondPublic(menu.getPage())
-  else {
-    ai as ComponentInteraction
-    ai.updatePublicMessage(menu.getPage())
-  }
-
-
+  menu.respond(ai, page)
 
 }
 
-private suspend fun buildInventoryMenu(ai: ActionInteraction, inventory: List<Inventory>): MyMenu {
-  return myMenu {
-    ResourceCategories.values().forEach { resourceCategory ->
+private suspend fun buildInventoryMenu(inventory: List<Inventory>): MyMenu {
+  val pageData = mutableMapOf<ResourceCategories, MutableList<String>>()
 
-      val items = mutableListOf<String>()
+  ResourceCategories.values().forEach { resourceCategory ->
 
-      transaction {
-        inventory.forEach {
-          if (it.amount != 0 && it.type == resourceCategory)
-            items.add("${it.amount}x ${getResourceFromShort(it.itemId).name.value}")
-        }
-      }
-      if (items.isNotEmpty()) {
-        var resourceCategoryName = resourceCategory.name.lowercase()
-        if (resourceCategoryName != "fish") {
-          if (resourceCategoryName.endsWith("y"))
-            resourceCategoryName = resourceCategoryName.dropLast(1) + "ie"
-          resourceCategoryName += "s"
-        }
-        page {
-          embed {
-            title = "You have the following $resourceCategoryName in your inventory:"
+    val items = mutableListOf<String>()
 
-            field {
-              name = items.joinToString("\n")
-            }
-          }
-          actionRow {
-            interactionButton(ButtonStyle.Secondary, "previousInventoryPage") {
-              emoji = Emojis.arrowLeft.toPartialEmoji()
-              label = "Left"
-            }
-            interactionButton(ButtonStyle.Secondary, "nextInventoryPage") {
-              emoji = Emojis.arrowRight.toPartialEmoji()
-              label = "Right"
-            }
-          }
-        }
+    transaction {
+      inventory.forEach {
+        if (it.amount != 0 && it.type == resourceCategory)
+          items.add("${it.amount}x ${getResourceFromShort(it.itemId).name.value}")
       }
     }
+
+    if (items.isNotEmpty())
+      pageData[resourceCategory] = items
   }
+  val totalPageCount = pageData.size
+  return myMenu {
+
+
+    pageData.forEach { (resourceCategory, resourceList) ->
+
+      var resourceCategoryName = resourceCategory.name.lowercase()
+      if (resourceCategoryName != "fish") {
+        if (resourceCategoryName.endsWith("y"))
+          resourceCategoryName = resourceCategoryName.dropLast(1) + "ie"
+        resourceCategoryName += "s"
+      }
+      page {
+        embed {
+          title = "You have the following $resourceCategoryName in your inventory:"
+
+          field {
+            name = resourceList.joinToString("\n")
+          }
+          footer {
+            text = "Page: ${pageData.keys.indexOf(resourceCategory) + 1}/$totalPageCount"
+          }
+        }
+        actionRow {
+          interactionButton(ButtonStyle.Secondary, "previousInventoryPage") {
+            emoji = Emojis.arrowLeft.toPartialEmoji()
+            label = "Left"
+          }
+          interactionButton(ButtonStyle.Secondary, "nextInventoryPage") {
+            emoji = Emojis.arrowRight.toPartialEmoji()
+            label = "Right"
+          }
+        }
+      }
+
+    }
+  }
+
 }
 
 suspend fun GuildSlashCommandEvent<NoArgs>.abandonSite() =
   abandonSiteConversation().startSlashResponse(discord, author, this)
 
 
-suspend fun openPlayerQuestMenu(ci: ActionInteraction, page: Int) {
-  commandInvoker = ci.user
-  val menu = buildPlayerQuestMenu(ci)
+suspend fun openPlayerQuestMenu(ai: ActionInteraction, page: Int) {
+  commandInvoker = ai.user
+  val menu = buildPlayerQuestMenu(ai)
 
-  if (ci is ComponentInteraction)
-    menu.defaultPageIndex = (ci.message.embeds[0].title!!.split(" ").last().toIntOrNull() ?: 1) - 1
-  else
-    menu.defaultPageIndex = 0
-
-  menu.navigate(page)
-  if (ci is GuildApplicationCommandInteraction)
-    ci.respondPublic(menu.getPage())
-  else {
-    ci as ComponentInteraction
-    ci.updatePublicMessage(menu.getPage())
-  }
+  menu.respond(ai, page)
 
 
 }
-private suspend fun buildPlayerQuestMenu(ci: ActionInteraction): MyMenu  {
-  val player = getPlayer(ci.user)
-  val inventory = getInventory(ci.user)
+private suspend fun buildPlayerQuestMenu(ai: ActionInteraction): MyMenu  {
+  val player = getPlayer(ai.user)
+  val inventory = getInventory(ai.user)
 
   return myMenu {
     if (player.quests.isEmpty())
@@ -340,9 +330,10 @@ private suspend fun buildPlayerQuestMenu(ci: ActionInteraction): MyMenu  {
         }
       }
     else {
+      val totalPageCount = player.quests.size
       player.quests.forEachIndexed { index, quest ->
         var canBeFinished = transaction { player.currentLocation == quest.city.cityId.value }
-        if (canBeFinished) checkIfBusy(ci)
+        if (canBeFinished) checkIfBusy(ai)
         val resourceStrings = mutableListOf<String>()
 
         quest.wantedItems.forEach { (short, amount) ->
@@ -401,6 +392,10 @@ private suspend fun buildPlayerQuestMenu(ci: ActionInteraction): MyMenu  {
             field {
               name = "City:"
               value = transaction { quest.city.name }
+            }
+
+            footer {
+              text = "Page: ${index + 1}/$totalPageCount"
             }
           }
           actionRow {

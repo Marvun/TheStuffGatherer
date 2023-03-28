@@ -93,56 +93,63 @@ private suspend fun buildCityQuestMenu(ci: ComponentInteraction): MyMenu {
           }
         }
       }
-    else
+    else {
+      val totalPageCount = player.quests.size
       city.quests.forEachIndexed { index, quest ->
-      page {
-        embed {
-          title = "Quest ${index + 1}"
+        page {
+          embed {
+            title = "Quest ${index + 1}"
 
-          footer {
-            text = "Page: ${index + 1}/${city.quests.size}"
-          }
-
-          field {
-            name = "Needed Resources:"
-            value = getResourcesDisplayName(quest.wantedItems, "\n")
-          }
-
-          field {
-            name = "Reward:"
-            value = "${quest.money} Coins"
-          }
-
-          if (quest.timeLimit != null) {
-
-            field {
-              name = " Special Rewards:"
-              value = quest.specialRewards
+            footer {
+              text = "Page: ${index + 1}/${city.quests.size}"
             }
 
             field {
-              name = "Time Limit:"
-              value = millisecondsToDuration(quest.timeLimit!! - System.currentTimeMillis())
+              name = "Needed Resources:"
+              value = getResourcesDisplayName(quest.wantedItems, "\n")
+            }
+
+            field {
+              name = "Reward:"
+              value = "${quest.money} Coins"
+            }
+
+            if (quest.timeLimit != null) {
+
+              field {
+                name = " Special Rewards:"
+                value = quest.specialRewards
+              }
+
+              field {
+                name = "Time Limit:"
+                value = millisecondsToDuration(quest.timeLimit!! - System.currentTimeMillis())
+              }
+            }
+
+            if (hasMaxQuests)
+              field {
+                name = "You have the maximum amount of quests!"
+              }
+
+            footer {
+              text = "Page: ${index + 1}/$totalPageCount"
             }
           }
-
-          if (hasMaxQuests) field {
-            name = "You have the maximum amount of quests!"
-          }
-        }
-        actionRow {
-          interactionButton(ButtonStyle.Secondary, "previousCityQuestPage") {
-            emoji = Emojis.arrowLeft.toPartialEmoji()
-            label = "Left"
-          }
-          interactionButton(ButtonStyle.Secondary, "acceptQuest",) {
-            disabled = hasMaxQuests
-            emoji = Emojis.whiteCheckMark.toPartialEmoji()
-            label = "Accept"
-          }
-          interactionButton(ButtonStyle.Secondary, "nextCityQuestPage") {
-            emoji = Emojis.arrowRight.toPartialEmoji()
-            label = "Right"
+          actionRow {
+            interactionButton(ButtonStyle.Secondary, "previousCityQuestPage") {
+              emoji = Emojis.arrowLeft.toPartialEmoji()
+              label = "Left"
+            }
+            interactionButton(ButtonStyle.Secondary, "acceptQuest") {
+              disabled = hasMaxQuests
+              emoji = Emojis.whiteCheckMark.toPartialEmoji()
+              label = "Accept"
+            }
+            interactionButton(ButtonStyle.Secondary, "nextCityQuestPage") {
+              emoji = Emojis.arrowRight.toPartialEmoji()
+              label = "Right"
+            }
           }
         }
       }
