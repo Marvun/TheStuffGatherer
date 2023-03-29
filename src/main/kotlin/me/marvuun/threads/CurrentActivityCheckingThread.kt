@@ -12,33 +12,32 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Discord.createCurrentActivityCheckingThread() {
-  val currentActivityCheckingThread = Thread {
-    runBlocking {
-      while (true) {
-        val currentActivities = transaction {
-          CurrentPlayerActivity.find { CurrentPlayerActivities.activityEnd lessEq System.currentTimeMillis() }.toList()
-        }
+    val currentActivityCheckingThread = Thread {
+        runBlocking {
+            while (true) {
+                val currentActivities = transaction {
+                    CurrentPlayerActivity.find { CurrentPlayerActivities.activityEnd lessEq System.currentTimeMillis() }.toList()
+                }
 
-        newSuspendedTransaction {
-          currentActivities.forEach {
-            val guild = kord.getGuildOrNull(Snowflake(it.guildId))
+                newSuspendedTransaction {
+                    currentActivities.forEach {
+                        val guild = kord.getGuildOrNull(Snowflake(it.guildId))
 
-            if (guild != null) {
+                        if (guild != null) {
+                            val channel = guild.getChannel(Snowflake(it.channelId))
 
-              val channel = guild.getChannel(Snowflake(it.channelId))
+                            val user = kord.getUser(Snowflake(it.userId))
 
-              val user = kord.getUser(Snowflake(it.userId))
-
-              if (user != null)
-                finishActivity(user, channel as MessageChannel)
-
+                            if (user != null) {
+                                finishActivity(user, channel as MessageChannel)
+                            }
+                        }
+                        it.delete()
+                    }
+                }
+                delay(1000)
             }
-            it.delete()
-          }
         }
-        delay(1000)
-      }
     }
-  }
-  currentActivityCheckingThread.start()
+    currentActivityCheckingThread.start()
 }

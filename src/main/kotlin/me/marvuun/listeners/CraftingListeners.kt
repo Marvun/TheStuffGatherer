@@ -15,64 +15,60 @@ private val ingredients = mutableListOf<Resource<String>?>(null, null)
 private var amount = 1
 private var maxAmount = 0
 fun craftingSelectListeners() = listeners {
-  on<InteractionCreateEvent> {
-    val ci = interaction as? SelectMenuInteraction ?: return@on
-    when (ci.componentId) {
+    on<InteractionCreateEvent> {
+        val ci = interaction as? SelectMenuInteraction ?: return@on
+        when (ci.componentId) {
+            "craftingStationMenu" -> {
+                openCraftingMenu(ci, ci.values.first().getStationType())
+            }
 
-      "craftingStationMenu" -> {
-        openCraftingMenu(ci, ci.values.first().getStationType())
-      }
+            "furnaceRecipes" -> {
+                ingredients[0] = getResourceFromShort(ci.values.first())
+                updateCraftingMenu(ingredients, ci, needsHeat = true)
+            }
 
-      "furnaceRecipes" -> {
-        ingredients[0] = getResourceFromShort(ci.values.first())
-        updateCraftingMenu(ingredients, ci, needsHeat = true)
-      }
+            "furnaceFuel" -> {
+                ingredients[1] = getResourceFromShort(ci.values.first())
+                updateCraftingMenu(ingredients, ci, needsHeat = true)
+            }
 
-      "furnaceFuel" -> {
-        ingredients[1] = getResourceFromShort(ci.values.first())
-        updateCraftingMenu(ingredients, ci, needsHeat = true)
-
-      }
-
-      "sawmillRecipes", "stonecutterRecipes" -> {
-        ingredients[0] = getResourceFromShort(ci.values.first())
-        updateCraftingMenu(ingredients, ci)
-      }
+            "sawmillRecipes", "stonecutterRecipes" -> {
+                ingredients[0] = getResourceFromShort(ci.values.first())
+                updateCraftingMenu(ingredients, ci)
+            }
+        }
     }
-  }
 }
 
 fun craftingButtonListeners() = listeners {
-  on<InteractionCreateEvent> {
-    val ci = interaction as? ComponentInteraction ?: return@on
-    when (ci.componentId) {
-      "changeRecipeAmount" -> {
-        maxAmount = askForAmount(ci, ingredients)
-      }
+    on<InteractionCreateEvent> {
+        val ci = interaction as? ComponentInteraction ?: return@on
+        when (ci.componentId) {
+            "changeRecipeAmount" -> {
+                maxAmount = askForAmount(ci, ingredients)
+            }
 
-      "confirmRecipe" -> {
-        startCrafting(ci, ingredients, amount)
-      }
+            "confirmRecipe" -> {
+                startCrafting(ci, ingredients, amount)
+            }
+        }
     }
-  }
 }
 
-
 fun craftingModalListeners() = listeners {
-  on<InteractionCreateEvent> {
-    val msi = interaction as? ModalSubmitInteraction ?: return@on
-    when (msi.modalId) {
-      "amountModal" -> {
-        val modalOutput = msi.textInputs["amountTextInput"]!!.value!!
-        val needsHeat = ingredients[0] is FurnaceRecipe
-        if (modalOutput.toIntOrNull() == null || modalOutput.toInt() > maxAmount || modalOutput.toInt() < 1)
-          updateCraftingMenu(ingredients, msi, 1, false, needsHeat)
-        else
-          updateCraftingMenu(ingredients, msi, modalOutput.toInt(), needsHeat)
-        amount = modalOutput.toInt()
-      }
-
+    on<InteractionCreateEvent> {
+        val msi = interaction as? ModalSubmitInteraction ?: return@on
+        when (msi.modalId) {
+            "amountModal" -> {
+                val modalOutput = msi.textInputs["amountTextInput"]!!.value!!
+                val needsHeat = ingredients[0] is FurnaceRecipe
+                if (modalOutput.toIntOrNull() == null || modalOutput.toInt() > maxAmount || modalOutput.toInt() < 1) {
+                    updateCraftingMenu(ingredients, msi, 1, false, needsHeat)
+                } else {
+                    updateCraftingMenu(ingredients, msi, modalOutput.toInt(), needsHeat)
+                }
+                amount = modalOutput.toInt()
+            }
+        }
     }
-
-  }
 }

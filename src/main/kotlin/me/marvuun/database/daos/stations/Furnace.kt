@@ -6,11 +6,10 @@ import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 
 class Furnace(id: EntityID<Int>) : Station<Int>(id) {
-  companion object : EntityClass<Int, Furnace>(Furnaces)
+    companion object : EntityClass<Int, Furnace>(Furnaces)
 
-  override var level by Furnaces.id
-  override var constructionTime by Furnaces.constructionTime
-  override var neededResources by Furnaces.neededResources.transformResources()
-  override var requiredLevel by Furnaces.requiredLevel
+    override var level by Furnaces.id
+    override var constructionTime by Furnaces.constructionTime
+    override var neededResources by Furnaces.neededResources.transformResources()
+    override var requiredLevel by Furnaces.requiredLevel
 }
-

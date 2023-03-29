@@ -1,5 +1,5 @@
 package me.marvuun.enums
 
 enum class ActivityTypes {
-  EXPLORING, TRAVELING, GATHERING, CRAFTING
+    EXPLORING, TRAVELING, GATHERING, CRAFTING
 }

@@ -12,33 +12,33 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Discord.createCurrentStationUpgradesCheckingThread() {
-  val currentStationUpgradesCheckingThread = Thread {
-    runBlocking {
-      while (true) {
-        val finishedUpgrades = transaction {
-          CurrentStationUpgrade.find { CurrentStationUpgrades.activityEnd lessEq System.currentTimeMillis() }
-        }
+    val currentStationUpgradesCheckingThread = Thread {
+        runBlocking {
+            while (true) {
+                val finishedUpgrades = transaction {
+                    CurrentStationUpgrade.find { CurrentStationUpgrades.activityEnd lessEq System.currentTimeMillis() }
+                }
 
-        newSuspendedTransaction {
-          finishedUpgrades.forEach {
-            val guild = kord.getGuildOrNull(Snowflake(it.guildId))
+                newSuspendedTransaction {
+                    finishedUpgrades.forEach {
+                        val guild = kord.getGuildOrNull(Snowflake(it.guildId))
 
-            if (guild != null) {
-              val channel = guild.getChannel(Snowflake(it.channelId))
+                        if (guild != null) {
+                            val channel = guild.getChannel(Snowflake(it.channelId))
 
-              val user = kord.getUser(Snowflake(it.userId))
+                            val user = kord.getUser(Snowflake(it.userId))
 
-              if (user != null)
-                finishStationUpgrade(user, channel as MessageChannel)
+                            if (user != null) {
+                                finishStationUpgrade(user, channel as MessageChannel)
+                            }
+                        }
+                        it.delete()
+                    }
+                }
 
+                delay(1000)
             }
-            it.delete()
-          }
         }
-
-        delay(1000)
-      }
     }
-  }
-  currentStationUpgradesCheckingThread.start()
+    currentStationUpgradesCheckingThread.start()
 }

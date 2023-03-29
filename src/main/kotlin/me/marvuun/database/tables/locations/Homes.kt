@@ -4,17 +4,17 @@ import me.marvuun.enums.StationTypes
 import java.util.*
 
 @OptIn(ExperimentalUnsignedTypes::class)
-object Homes: Locations() {
+object Homes : Locations() {
 
-  override val id = uuid("home_id").entityId()
-  override val primaryKey = PrimaryKey(id)
+    override val id = uuid("home_id").entityId()
+    override val primaryKey = PrimaryKey(id)
 
-  val userId = ulong("user_id")
-  val travelTime = integer("travel_time").default(0)
-  val furnaceLevel = integer("furnace_level").default(0)
-  val sawmillLevel = integer("sawmill_level").default(0)
-  val stoneCutterLevel = integer("stone_cutter_level").default(0)
-  val upgradeStartTime = long("upgrade_start_time").default(System.currentTimeMillis())
-  val upgradeDuration = long("upgrade_duration").default(0L)
-  val upgradingStation = enumerationByName<StationTypes>("upgrading_station", 255).nullable()
+    val userId = ulong("user_id")
+    val travelTime = integer("travel_time").default(0)
+    val furnaceLevel = integer("furnace_level").default(0)
+    val sawmillLevel = integer("sawmill_level").default(0)
+    val stoneCutterLevel = integer("stone_cutter_level").default(0)
+    val upgradeStartTime = long("upgrade_start_time").default(System.currentTimeMillis())
+    val upgradeDuration = long("upgrade_duration").default(0L)
+    val upgradingStation = enumerationByName<StationTypes>("upgrading_station", 255).nullable()
 }

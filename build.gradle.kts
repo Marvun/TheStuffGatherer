@@ -10,7 +10,6 @@ version = "0.0.1"
 
 application {
     mainClass.set("me.marvuun.MainKt")
-
 }
 
 repositories {
@@ -32,7 +31,6 @@ dependencies {
     implementation("org.mariadb.jdbc:mariadb-java-client:3.1.2")
 
     implementation("com.github.doyaaaaaken:kotlin-csv-jvm:1.8.0")
-
 }
 
 tasks.test {

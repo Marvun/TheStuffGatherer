@@ -13,87 +13,84 @@ import me.marvuun.util.checkUser
 
 private var commandInvoker: User? = null
 suspend fun showHelp(ai: ActionInteraction, discord: Discord, page: Int) {
-  if (ai is GuildApplicationCommandInteraction)
-    commandInvoker = ai.user
-  else
-    if (!checkUser(ai, commandInvoker!!)) return
+    if (ai is GuildApplicationCommandInteraction) {
+        commandInvoker = ai.user
+    } else {
+        if (!checkUser(ai, commandInvoker!!)) return
+    }
 
-  val menu = buildHelpMenu(discord)
-  println()
-  menu.respond(ai, page)
-
+    val menu = buildHelpMenu(discord)
+    println()
+    menu.respond(ai, page)
 }
 
 suspend fun buildHelpMenu(discord: Discord): MyMenu {
-  val commands = discord.commands
-  val activityCommands = commands.filter { it.category == "Activity" }
-  val characterCommands = commands.filter { it.category == "Character" }
-  return myMenu {
-    page {
-      embed {
-        title = "General Info"
-        description = "Hi, to get started with the bot simply use the `/start` command. After that you have to go explore with `/explore`. Exploring is important, because that is how you find sites. You can travel to them via the `/travel` command. After reaching a site you can start gathering the local resources with `/gather`.\n\n There is also a level system. Levels determine the amount you get and what kind of resources, you will find. \n\n For more information about specific commands use the following site. \n\n Happy gathering!"
-        footer {
-          text = "Page 1/3"
+    val commands = discord.commands
+    val activityCommands = commands.filter { it.category == "Activity" }
+    val characterCommands = commands.filter { it.category == "Character" }
+    return myMenu {
+        page {
+            embed {
+                title = "General Info"
+                description = "Hi, to get started with the bot simply use the `/start` command. After that you have to go explore with `/explore`. Exploring is important, because that is how you find sites. You can travel to them via the `/travel` command. After reaching a site you can start gathering the local resources with `/gather`.\n\n There is also a level system. Levels determine the amount you get and what kind of resources, you will find. \n\n For more information about specific commands use the following site. \n\n Happy gathering!"
+                footer {
+                    text = "Page 1/3"
+                }
+            }
+            actionRow {
+                interactionButton(ButtonStyle.Secondary, "previousHelpPage") {
+                    emoji = Emojis.arrowLeft.toPartialEmoji()
+                }
+                interactionButton(ButtonStyle.Secondary, "nextHelpPage") {
+                    emoji = Emojis.arrowRight.toPartialEmoji()
+                }
+            }
         }
-      }
-      actionRow {
-        interactionButton(ButtonStyle.Secondary,"previousHelpPage") {
-          emoji =  Emojis.arrowLeft.toPartialEmoji()
 
+        page {
+            embed {
+                title = "Activity Commands"
+                activityCommands.forEach {
+                    field {
+                        name = "`/${it.name}`"
+                        value = it.description
+                    }
+                }
+                footer {
+                    text = "Page 2/3"
+                }
+            }
+            actionRow {
+                interactionButton(ButtonStyle.Secondary, "previousHelpPage") {
+                    emoji = Emojis.arrowLeft.toPartialEmoji()
+                }
+                interactionButton(ButtonStyle.Secondary, "nextHelpPage") {
+                    emoji = Emojis.arrowRight.toPartialEmoji()
+                }
+            }
         }
-        interactionButton(ButtonStyle.Secondary,"nextHelpPage") {
-          emoji =  Emojis.arrowRight.toPartialEmoji()
-        }
-      }
-     }
 
-    page {
-      embed {
-        title = "Activity Commands"
-        activityCommands.forEach {
-          field {
-            name = "`/${it.name}`"
-            value = it.description
-          }
+        page {
+            embed {
+                title = "Character Commands"
+                characterCommands.forEach {
+                    field {
+                        name = "`/${it.name}`"
+                        value = it.description
+                    }
+                }
+                footer {
+                    text = "Page 3/3"
+                }
+            }
+            actionRow {
+                interactionButton(ButtonStyle.Secondary, "previousHelpPage") {
+                    emoji = Emojis.arrowLeft.toPartialEmoji()
+                }
+                interactionButton(ButtonStyle.Secondary, "nextHelpPage") {
+                    emoji = Emojis.arrowRight.toPartialEmoji()
+                }
+            }
         }
-        footer {
-          text = "Page 2/3"
-        }
-      }
-      actionRow {
-        interactionButton(ButtonStyle.Secondary,"previousHelpPage") {
-          emoji =  Emojis.arrowLeft.toPartialEmoji()
-
-        }
-        interactionButton(ButtonStyle.Secondary,"nextHelpPage") {
-          emoji =  Emojis.arrowRight.toPartialEmoji()
-        }
-      }
     }
-
-    page {
-      embed {
-        title = "Character Commands"
-        characterCommands.forEach {
-          field {
-            name = "`/${it.name}`"
-            value = it.description
-          }
-        }
-        footer {
-          text = "Page 3/3"
-        }
-      }
-      actionRow {
-        interactionButton(ButtonStyle.Secondary,"previousHelpPage") {
-          emoji =  Emojis.arrowLeft.toPartialEmoji()
-
-        }
-        interactionButton(ButtonStyle.Secondary,"nextHelpPage") {
-          emoji =  Emojis.arrowRight.toPartialEmoji()
-        }
-      }
-    }
-  }
 }

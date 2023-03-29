@@ -4,53 +4,52 @@ import me.jakejmattson.discordkt.commands.commands
 import me.marvuun.logic.*
 
 fun characterCommands() = commands("Character") {
-  slash("start","Start the journey!") {
-    execute {
-      startJourney()
+    slash("start", "Start the journey!") {
+        execute {
+            startJourney()
+        }
     }
-  }
-  slash("sites", "Shows you all your available sites, that you have found."){
-    execute {
-      isRegisteredPlayer() ?: return@execute
-      printSites()
+    slash("sites", "Shows you all your available sites, that you have found.") {
+        execute {
+            isRegisteredPlayer() ?: return@execute
+            printSites()
+        }
     }
-  }
-  slash("location" , "Tells you where you are and what can be found at your current location.") {
-    execute {
-      isRegisteredPlayer() ?: return@execute
-      getLocation(interaction!!)
-      generateSites(getPlayer(interaction!!.user), interaction!!.user, 20)
+    slash("location", "Tells you where you are and what can be found at your current location.") {
+        execute {
+            isRegisteredPlayer() ?: return@execute
+            getLocation(interaction!!)
+            generateSites(getPlayer(interaction!!.user), interaction!!.user, 20)
+        }
     }
-  }
-  slash("levels", "Shows you your level progresses.") {
-    execute {
-      isRegisteredPlayer() ?: return@execute
-      printLevels()
+    slash("levels", "Shows you your level progresses.") {
+        execute {
+            isRegisteredPlayer() ?: return@execute
+            printLevels()
+        }
     }
-  }
-  slash("inventory", "Shows you, what you've got in your inventory.") {
-    execute {
-      isRegisteredPlayer() ?: return@execute
-      openInventoryMenu(interaction!!, 0)
+    slash("inventory", "Shows you, what you've got in your inventory.") {
+        execute {
+            isRegisteredPlayer() ?: return@execute
+            openInventoryMenu(interaction!!, 0)
+        }
     }
-  }
-  slash("abandon", "Abandons a site, which still has resources left.") {
-    execute {
-      isRegisteredPlayer() ?: return@execute
-      abandonSite()
+    slash("abandon", "Abandons a site, which still has resources left.") {
+        execute {
+            isRegisteredPlayer() ?: return@execute
+            abandonSite()
+        }
     }
-  }
-  slash("upgrade", "Gives you information on what you can upgrade.") {
-    execute {
-      isRegisteredPlayer() ?: return@execute
-      openUpgradeMenu()
+    slash("upgrade", "Gives you information on what you can upgrade.") {
+        execute {
+            isRegisteredPlayer() ?: return@execute
+            openUpgradeMenu()
+        }
     }
-  }
-  slash("quests", "Shows you all your current quests."){
-    execute {
-      isRegisteredPlayer() ?: return@execute
-      openPlayerQuestMenu(interaction!!, 0)
+    slash("quests", "Shows you all your current quests.") {
+        execute {
+            isRegisteredPlayer() ?: return@execute
+            openPlayerQuestMenu(interaction!!, 0)
+        }
     }
-  }
 }
-
