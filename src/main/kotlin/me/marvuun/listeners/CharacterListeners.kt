@@ -37,6 +37,7 @@ fun characterSelectListeners() = listeners {
                 }
                 askGatheringAmount(ci, existingGatheringResources)
             }
+            "abandonSelectSite" -> abandonSite(ci, ci.values.first())
         }
     }
 }

@@ -4,13 +4,13 @@ import dev.kord.common.entity.ButtonStyle
 import dev.kord.core.behavior.interaction.*
 import dev.kord.core.entity.User
 import dev.kord.core.entity.interaction.*
+import dev.kord.rest.builder.component.option
 import dev.kord.rest.builder.message.create.actionRow
 import dev.kord.rest.builder.message.create.embed
 import dev.kord.x.emoji.Emojis
 import me.jakejmattson.discordkt.NoArgs
 import me.jakejmattson.discordkt.commands.GuildSlashCommandEvent
 import me.jakejmattson.discordkt.extensions.toPartialEmoji
-import me.marvuun.conversations.abandonSiteConversation
 import me.marvuun.database.daos.*
 import me.marvuun.database.daos.location.*
 import me.marvuun.database.daos.resources.Blueprint
@@ -19,6 +19,7 @@ import me.marvuun.database.daos.resources.getResourceFromShort
 import me.marvuun.database.tables.*
 import me.marvuun.database.tables.locations.Cities
 import me.marvuun.database.tables.locations.Homes
+import me.marvuun.database.tables.locations.Sites
 import me.marvuun.database.tables.resources.Blueprints
 import me.marvuun.enums.RarityTypes
 import me.marvuun.enums.ResourceCategories
@@ -302,8 +303,72 @@ private suspend fun buildInventoryMenu(inventory: List<Inventory>): MyMenu {
     }
 }
 
-suspend fun GuildSlashCommandEvent<NoArgs>.abandonSite() =
-    abandonSiteConversation().startSlashResponse(discord, author, this)
+suspend fun askAbandonSite(ai: ActionInteraction) {
+    val playerSites = getPlayerSites(ai.user)
+
+    val playerSitesMap = transaction {
+        mapOf(
+            "Mine" to playerSites.mineId,
+            "Lake" to playerSites.lakeId,
+            "River" to playerSites.riverId,
+            "Forest" to playerSites.forestId,
+            "Meadow" to playerSites.meadowId,
+        ).filter { it.value != null }
+    }
+
+    if (playerSitesMap.isEmpty()) {
+        ai.respondPublic {
+            embed {
+                title = "You don't have any sites you can abandon. Visit some first."
+            }
+        }
+        return
+    }
+    ai.respondPublic {
+        embed {
+            title = "Which site do you want to abandon?"
+        }
+        actionRow {
+            stringSelect("abandonSelectSite") {
+                playerSitesMap.forEach { (name, _) ->
+                    option(name, name)
+                }
+            }
+        }
+    }
+}
+
+suspend fun abandonSite(ci: ComponentInteraction, selection: String) {
+    val playerSites = getPlayerSites(ci.user)
+    val uuid = playerSites.getPlayerSiteIDWithName(selection)!!
+    val player = getPlayer(ci.user)
+
+    if (transaction { player.destination == uuid }) {
+        ci.respondPublic {
+            embed {
+                title = "You can't abandon a site, that you are traveling to."
+            }
+        }
+        return
+    }
+
+    transaction {
+        if (player.currentLocation == uuid) {
+            player.currentLocation = null
+        }
+
+        val site = Site.find { Sites.id eq uuid }.first()
+        site.delete()
+    }
+
+    playerSites.deleteColumnWithUUID(uuid)
+
+    ci.respondPublic {
+        embed {
+            title = "You abandoned your current ${selection.lowercase()}."
+        }
+    }
+}
 
 suspend fun openPlayerQuestMenu(ai: ActionInteraction, page: Int) {
     commandInvoker = ai.user

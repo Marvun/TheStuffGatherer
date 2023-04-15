@@ -37,7 +37,7 @@ fun characterCommands() = commands("Character") {
     slash("abandon", "Abandons a site, which still has resources left.") {
         execute {
             isRegisteredPlayer() ?: return@execute
-            abandonSite()
+            askAbandonSite(interaction!!)
         }
     }
     slash("upgrade", "Gives you information on what you can upgrade.") {

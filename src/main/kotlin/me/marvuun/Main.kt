@@ -1,13 +1,11 @@
 package me.marvuun
 
 import dev.kord.common.annotation.KordPreview
-import io.ktor.client.*
 import me.jakejmattson.discordkt.dsl.bot
 import me.marvuun.database.Database
 import me.marvuun.threads.createCurrentActivityCheckingThread
 import me.marvuun.threads.createCurrentStationUpgradesCheckingThread
 import me.marvuun.threads.questUpdaterThread
-import java.util.*
 
 @OptIn(KordPreview::class)
 fun main() {

@@ -1,6 +1,7 @@
 package me.marvuun.database.daos
 
 import me.marvuun.database.tables.PlayerSites
+import me.marvuun.enums.SiteTypes
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -28,4 +29,12 @@ class PlayerSite(id: EntityID<ULong>) : Entity<ULong>(id) {
                 else -> throw Exception("Could not delete player site with uuid $uuid, since it didn't match anything.")
             }
         }
+
+    fun getPlayerSiteIDWithName(siteName: String) = when (SiteTypes.getFromString(siteName.lowercase())) {
+        SiteTypes.MINE -> mineId
+        SiteTypes.LAKE -> lakeId
+        SiteTypes.RIVER -> riverId
+        SiteTypes.FOREST -> forestId
+        SiteTypes.MEADOW -> meadowId
+    }
 }
