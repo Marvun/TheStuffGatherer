@@ -217,8 +217,18 @@ suspend fun GuildSlashCommandEvent<NoArgs>.printLevels() {
             }
 
             field {
-                name = "__Melting__ : ${levels.meltingLevel}"
-                value = "${levels.currentMeltingExp}/${levels.neededMeltingExp}"
+                name = "__Smelting__ : ${levels.smeltingLevel}"
+                value = "${levels.currentSmeltingExp}/${levels.neededSmeltingExp}"
+            }
+
+            field {
+                name = "__Sawing__ : ${levels.sawingLevel}"
+                value = "${levels.currentSawingExp}/${levels.neededSawingExp}"
+            }
+
+            field {
+                name = "__Stone Cutting__ : ${levels.stoneCuttingLevel}"
+                value = "${levels.currentStoneCuttingExp}/${levels.neededStoneCuttingExp}"
             }
         }
     }

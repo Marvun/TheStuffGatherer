@@ -8,10 +8,11 @@ import dev.kord.core.behavior.interaction.updatePublicMessage
 import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.MessageChannel
 import dev.kord.core.entity.interaction.ComponentInteraction
+import dev.kord.rest.builder.component.SelectOptionBuilder
+import dev.kord.rest.builder.component.option
 import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.rest.builder.message.create.actionRow
 import dev.kord.rest.builder.message.create.embed
-import dev.kord.rest.builder.message.modify.actionRow
 import dev.kord.rest.builder.message.modify.embed
 import dev.kord.x.emoji.Emojis
 import me.jakejmattson.discordkt.NoArgs
@@ -70,10 +71,10 @@ suspend fun openHomeUpgradeMenu(ci: ComponentInteraction) {
                 description = "Select what you want to upgrade at your home."
             }
             actionRow {
-                selectMenu("stationMenu") {
-                    option("Sawmill", "sawmill") {
+                stringSelect("stationMenu") {
+                    option("Sawmill", "sawmill", fun SelectOptionBuilder.() {
                         description = "Current level: ${home.sawmillLevel}"
-                    }
+                    })
                     option("Furnace", "furnace") {
                         description = "Current level: ${home.furnaceLevel}"
                     }
@@ -112,7 +113,7 @@ suspend fun openStationUpgrade(
         if (levels.gatheringLevel < nextStation.requiredLevel) hasRequiredLevel = false
     } else {
         when (station) {
-            StationTypes.FURNACE -> if (levels.meltingLevel < nextStation.requiredLevel) hasRequiredLevel = false
+            StationTypes.FURNACE -> if (levels.smeltingLevel < nextStation.requiredLevel) hasRequiredLevel = false
             StationTypes.SAWMILL -> if (levels.sawingLevel < nextStation.requiredLevel) hasRequiredLevel = false
             StationTypes.STONECUTTER -> if (levels.stoneCuttingLevel < nextStation.requiredLevel) hasRequiredLevel = false
         }
@@ -185,7 +186,7 @@ fun buildStationUpgradeEmbedFields(
         } else {
             when (station) {
                 StationTypes.SAWMILL -> "You are sawing level ${levels.sawingLevel}, but level ${nextStationLevel.requiredLevel} is required."
-                StationTypes.FURNACE -> "You are melting level ${levels.meltingLevel}, but level ${nextStationLevel.requiredLevel} is required."
+                StationTypes.FURNACE -> "You are smelting level ${levels.smeltingLevel}, but level ${nextStationLevel.requiredLevel} is required."
                 StationTypes.STONECUTTER -> "You are stone cutting level ${levels.stoneCuttingLevel}, but level ${nextStationLevel.requiredLevel} is required."
             }
         }

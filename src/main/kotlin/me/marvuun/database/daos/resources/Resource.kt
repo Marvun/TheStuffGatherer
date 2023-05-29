@@ -40,7 +40,7 @@ abstract class Resource<T : Comparable<T>>(id: EntityID<T>) : Entity<T>(id) {
             ResourceCategories.SKIN -> TODO()
             ResourceCategories.FISH -> levels.fishingLevel
             ResourceCategories.PLANT, ResourceCategories.HERB -> levels.botanyLevel
-            ResourceCategories.NUGGET, ResourceCategories.INGOT -> levels.meltingLevel
+            ResourceCategories.NUGGET, ResourceCategories.INGOT -> levels.smeltingLevel
             ResourceCategories.PLANK -> levels.sawingLevel
             ResourceCategories.STONE_BLOCK -> levels.stoneCuttingLevel
             ResourceCategories.BLUEPRINT -> throw Exception("Something went wrong. A Blueprint should never require a level.")

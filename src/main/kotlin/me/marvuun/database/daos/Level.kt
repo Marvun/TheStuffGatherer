@@ -49,9 +49,9 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
     var currentFishingExp by Levels.currentFishingExp
     var neededFishingExp by Levels.neededFishingExp
 
-    var meltingLevel by Levels.meltingLevel
-    var currentMeltingExp by Levels.currentMeltingExp
-    var neededMeltingExp by Levels.neededMeltingExp
+    var smeltingLevel by Levels.smeltingLevel
+    var currentSmeltingExp by Levels.currentSmeltingExp
+    var neededSmeltingExp by Levels.neededSmeltingExp
 
     var sawingLevel by Levels.sawingLevel
     var currentSawingExp by Levels.currentSawingExp
@@ -125,13 +125,13 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
             sendLevelUpMessage(user, channel, ::fishingLevel, fishingLevel)
             checkForLevelUp(user, channel)
         }
-        if (currentMeltingExp >= neededMeltingExp) {
+        if (currentSmeltingExp >= neededSmeltingExp) {
             transaction {
-                currentMeltingExp -= neededMeltingExp
-                meltingLevel += 1
-                neededMeltingExp = getNeededExperience(meltingLevel)
+                currentSmeltingExp -= neededSmeltingExp
+                smeltingLevel += 1
+                neededSmeltingExp = getNeededExperience(smeltingLevel)
             }
-            sendLevelUpMessage(user, channel, ::meltingLevel, meltingLevel)
+            sendLevelUpMessage(user, channel, ::smeltingLevel, smeltingLevel)
             checkForLevelUp(user, channel)
         }
         if (currentSawingExp >= neededSawingExp) {
@@ -191,10 +191,10 @@ class Level(id: EntityID<ULong>) : Entity<ULong>(id) {
                     ResourceCategories.SKIN -> TODO()
                     ResourceCategories.FISH -> currentFishingExp += exp
                     ResourceCategories.PLANT, ResourceCategories.HERB -> currentBotanyExp += exp
-                    ResourceCategories.NUGGET -> currentMeltingExp += exp
+                    ResourceCategories.NUGGET -> currentSmeltingExp += exp
                     ResourceCategories.INGOT -> {
                         exp = (exp * 1.5).toInt()
-                        currentMeltingExp += exp
+                        currentSmeltingExp += exp
                     }
                     ResourceCategories.PLANK -> currentSawingExp += exp
                     ResourceCategories.STONE_BLOCK -> {

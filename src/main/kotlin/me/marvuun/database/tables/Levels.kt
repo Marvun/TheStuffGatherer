@@ -36,9 +36,9 @@ object Levels : IdTable<ULong>() {
     val currentFishingExp = integer("current_fishing_exp").default(0)
     val neededFishingExp = integer("needed_fishing_exp").default(50)
 
-    val meltingLevel = integer("melting_level").default(0)
-    val currentMeltingExp = integer("current_melting_exp").default(0)
-    val neededMeltingExp = integer("needed_melting_exp").default(50)
+    val smeltingLevel = integer("smelting_level").default(0)
+    val currentSmeltingExp = integer("current_smelting_exp").default(0)
+    val neededSmeltingExp = integer("needed_smelting_exp").default(50)
 
     val sawingLevel = integer("sawing_level").default(0)
     val currentSawingExp = integer("current_sawing_exp").default(0)
