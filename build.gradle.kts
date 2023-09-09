@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.8.10"
+    kotlin("jvm") version "1.9.0"
     application
 }
 
@@ -21,7 +21,7 @@ dependencies {
     testImplementation(kotlin("test"))
 
     implementation("me.jakejmattson:DiscordKt:0.23.4")
-    implementation("dev.kord:kord-core:0.8.0")
+    implementation("dev.kord:kord-core:0.10.0")
 
     implementation("org.jetbrains.exposed:exposed-core:0.40.1")
     implementation("org.jetbrains.exposed:exposed-dao:0.40.1")
