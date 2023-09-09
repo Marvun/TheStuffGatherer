@@ -2,10 +2,7 @@ package me.marvuun.logic
 
 import dev.kord.common.entity.TextInputStyle
 import dev.kord.core.behavior.channel.createMessage
-import dev.kord.core.behavior.interaction.ComponentInteractionBehavior
-import dev.kord.core.behavior.interaction.modal
-import dev.kord.core.behavior.interaction.respondPublic
-import dev.kord.core.behavior.interaction.updatePublicMessage
+import dev.kord.core.behavior.interaction.*
 import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.MessageChannel
 import dev.kord.core.entity.interaction.ActionInteraction
@@ -50,6 +47,7 @@ suspend fun GuildSlashCommandEvent<Args1<Int>>.startExploration() {
     val player = getPlayer(author)
 
     checkIfBusy(interaction!!) ?: return
+    needsMoreSites(interaction!!) ?: return
 
     if (args.first <= 0) {
         interaction!!.respondPublic {
@@ -520,9 +518,24 @@ suspend fun checkIfBusy(interaction: ActionInteraction): Unit? {
             }
         }
         null
-    } else {
-        Unit
     }
+    else Unit
+
+}
+
+suspend fun needsMoreSites(interaction: ActionInteraction): Unit? {
+    val sites = getSites(interaction.user)
+    val emptySites = sites.filter { it.value.isEmpty() }
+
+    return if (emptySites.isEmpty()) {
+        interaction.respondPublic {
+            embed {
+                title = "You have explore enough for now. Maybe it is time to visit one of your sites."
+            }
+        }
+        null
+    }
+    else Unit
 }
 
 fun getPlayer(user: User) = transaction { Player.findById(user.id.value) }!!
@@ -566,8 +579,8 @@ fun generateSites(player: Player, user: User, amount: Int? = null, rarity: Rarit
         val randomNum2 = if (amount == null) (0..100).random() else 100
 
         if (randomNum2 > 67) {
-            val rarityType = rarity ?: RarityTypes.values().find { randomNum in it.range }!!
-            val siteType = SiteTypes.values().random()
+            val rarityType = rarity ?: RarityTypes.entries.find { randomNum in it.range }!!
+            val siteType = SiteTypes.entries.toTypedArray().random()
 
             transaction {
                 val resources = generateResources(rarityType, siteType, user)

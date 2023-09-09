@@ -96,6 +96,19 @@ suspend fun openCraftingMenu(ci: ComponentInteraction, stationType: StationTypes
                 }
             }
         }
+        actionRow {
+            interactionButton(ButtonStyle.Secondary, "cancelCraftingMenu") {
+                label = "Cancel"
+            }
+        }
+    }
+}
+
+suspend fun cancelCraftingMenu(ci: ComponentInteraction) {
+    ci.updatePublicMessage {
+        embed {
+            title = "Crafting canceled!"
+        }
     }
 }
 

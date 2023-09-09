@@ -10,7 +10,7 @@ enum class StationTypes {
     fun getDisplayName() = this.name.lowercase().replaceFirstChar { it.uppercase() }
 }
 
-fun String.getStationType() = StationTypes.values().find { it.name == this.uppercase().replace(" ", "") }!!
+fun String.getStationType() = StationTypes.entries.find { it.name == this.uppercase().replace(" ", "") }!!
 
 fun getStationTypeFromResource(resource: Recipe<*>) =
     when (resource) {

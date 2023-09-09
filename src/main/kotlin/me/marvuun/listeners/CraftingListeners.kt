@@ -51,6 +51,10 @@ fun craftingButtonListeners() = listeners {
             "confirmRecipe" -> {
                 startCrafting(ci, ingredients, amount)
             }
+
+            "cancelCraftingMenu" -> {
+                cancelCraftingMenu(ci)
+            }
         }
     }
 }
